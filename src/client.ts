@@ -1,31 +1,31 @@
-import type z from 'zod'
-import type { RouteConfig, RouterConfig } from './types'
+import type z from "zod";
+import type { RouteConfig, RouterConfig } from "./types";
 
-type InferRouteConfig<T extends RouteConfig | Omit<RouteConfig, 'body'>> = {
-  [K in keyof T]: z.infer<T[K]>
-}
+type InferRouteConfig<T extends RouteConfig | Omit<RouteConfig, "body">> = {
+  [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : never;
+};
 
 export type RouterClient<T extends RouterConfig> = {
   GET: {
-    [K in keyof T['GET']]: (
-      data?: Omit<Omit<InferRouteConfig<T['GET'][K]>, 'body'>, 'result'>
-    ) => Promise<InferRouteConfig<T['GET'][K]>['result']>
-  }
+    [K in keyof T["GET"]]: (
+      data?: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "result">
+    ) => Promise<InferRouteConfig<T["GET"][K]>["result"]>;
+  };
   POST: {
-    [K in keyof T['POST']]: (
-      data: Omit<InferRouteConfig<T['POST'][K]>, 'result'>
-    ) => Promise<InferRouteConfig<T['POST'][K]>['result']>
-  }
-}
+    [K in keyof T["POST"]]: (
+      data: Omit<InferRouteConfig<T["POST"][K]>, "result">
+    ) => Promise<InferRouteConfig<T["POST"][K]>["result"]>;
+  };
+};
 
-type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
+type FetchFunction = (url: string, options: RequestInit) => Promise<Response>;
 
 type CreateClientOptions = {
-  baseUrl: string
-  headers?: Record<string, string>
-  fetch?: FetchFunction
-  validateRequest?: boolean
-}
+  baseUrl: string;
+  headers?: Record<string, string>;
+  fetch?: FetchFunction;
+  validateRequest?: boolean;
+};
 
 export const createClient = <T extends RouterConfig>(
   config: T,
@@ -36,62 +36,66 @@ export const createClient = <T extends RouterConfig>(
     headers = {},
     fetch: customFetch = fetch,
     validateRequest = false,
-  } = options
+  } = options;
 
   const client = {
-    GET: {} as RouterClient<T>['GET'],
-    POST: {} as RouterClient<T>['POST'],
-  }
+    GET: {} as RouterClient<T>["GET"],
+    POST: {} as RouterClient<T>["POST"],
+  };
 
   Object.keys(config.GET).forEach((path) => {
-    client.GET[path as keyof T['GET']] = async (data?: any) => {
+    (client.GET[path as keyof T["GET"]] as any) = async (data?: any) => {
       if (validateRequest && data?.query) {
-        config.GET[path]?.query?.parse(data.query)
+        config.GET[path]?.query?.parse(data.query);
       }
       const queryString = data?.query
-        ? '?' + new URLSearchParams(data.query).toString()
-        : ''
+        ? "?" + new URLSearchParams(data.query).toString()
+        : "";
       const response = await customFetch(`${baseUrl}${path}${queryString}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...headers,
         },
-      })
+      });
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return response.json()
-    }
-  })
+      const json = await response.json();
+
+      return config.GET[path]?.result.parse(json);
+    };
+  });
 
   Object.keys(config.POST).forEach((path) => {
-    client.POST[path as keyof T['POST']] = async (data: any) => {
+    (client.POST[path as keyof T["POST"]] as any) = async (data: any) => {
       if (validateRequest) {
         if (data?.body) {
-          config.POST[path]?.body?.parse(data.body)
+          config.POST[path]?.body?.parse(data.body);
         }
         if (data?.query) {
-          config.POST[path]?.query?.parse(data.query)
+          config.POST[path]?.query?.parse(data.query);
         }
       }
       const queryString = data?.query
-        ? '?' + new URLSearchParams(data.query).toString()
-        : ''
+        ? "?" + new URLSearchParams(data.query).toString()
+        : "";
       const response = await customFetch(`${baseUrl}${path}${queryString}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...headers,
         },
         body: JSON.stringify(data.body),
-      })
+      });
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return response.json()
-    }
-  })
+      const json = await response.json();
 
-  return client
-}
+      return config.POST[path]?.result.parse(json);
+    };
+  });
+
+  return client;
+};
