@@ -1,6 +1,6 @@
 {
   "name": "@jokio/rpc",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Type-safe RPC framework with Zod validation for Express and TypeScript",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -14,6 +14,9 @@
       "import": "./dist/index.mjs",
       "types": "./dist/index.d.ts"
     }
+  },
+  "prettier": {
+    "semi": false
   },
   "scripts": {
     "build": "tsup",
