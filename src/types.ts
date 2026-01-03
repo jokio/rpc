@@ -1,14 +1,21 @@
-import type z from 'zod'
+import type z from "zod";
 
 export type RouteConfig = {
-  body: z.ZodType
-  query?: z.ZodType
-  result: z.ZodType
-}
+  body: z.ZodType;
+  query?: z.ZodType;
+  result: z.ZodType;
+};
 
 export type RouterConfig = {
-  GET: Record<string, Omit<RouteConfig, 'body'>>
-  POST: Record<string, RouteConfig>
-}
+  GET: Record<string, Omit<RouteConfig, "body">>;
+  POST: Record<string, RouteConfig>;
+};
 
-export const defineRouterConfig = <T extends RouterConfig>(config: T): T => config
+export type InferRouteConfig<
+  T extends RouteConfig | Omit<RouteConfig, "body">
+> = {
+  [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : never;
+};
+
+export const defineRouterConfig = <T extends RouterConfig>(config: T): T =>
+  config;

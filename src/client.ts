@@ -1,9 +1,4 @@
-import type z from "zod";
-import type { RouteConfig, RouterConfig } from "./types";
-
-type InferRouteConfig<T extends RouteConfig | Omit<RouteConfig, "body">> = {
-  [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : never;
-};
+import type { InferRouteConfig, RouterConfig } from "./types";
 
 export type RouterClient<T extends RouterConfig> = {
   GET: {
