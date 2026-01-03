@@ -1,10 +1,21 @@
 import type { Request, Router } from "express"
 import type { InferRouteConfig, RouterConfig } from "./types"
 
+// Extract path parameters from route string
+// e.g., "/user/:id" -> { id: string }, "/user/:id/post/:postId" -> { id: string, postId: string }
+type ExtractRouteParams<T extends string> =
+  T extends `${infer _Start}:${infer Param}/${infer Rest}`
+    ? { [K in Param | keyof ExtractRouteParams<`/${Rest}`>]: string }
+    : T extends `${infer _Start}:${infer Param}`
+    ? { [K in Param]: string }
+    : Record<string, never>
+
 export type RouterHandlerConfig<T extends RouterConfig, TContext> = {
   GET: {
     [K in keyof T["GET"]]: (
-      data: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "result">,
+      data: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "result"> & {
+        params: K extends string ? ExtractRouteParams<K> : unknown
+      },
       ctx: TContext
     ) =>
       | Promise<InferRouteConfig<T["GET"][K]>["result"]>
@@ -12,7 +23,9 @@ export type RouterHandlerConfig<T extends RouterConfig, TContext> = {
   }
   POST: {
     [K in keyof T["POST"]]: (
-      data: Omit<InferRouteConfig<T["POST"][K]>, "result">,
+      data: Omit<InferRouteConfig<T["POST"][K]>, "result"> & {
+        params: K extends string ? ExtractRouteParams<K> : unknown
+      },
       ctx: TContext
     ) =>
       | Promise<InferRouteConfig<T["POST"][K]>["result"]>
@@ -34,6 +47,7 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
           const ctx = (handlers.ctx?.(req) ?? {}) as TContext
 
           const data = {
+            params: req.params,
             query: config.GET[x]?.query?.parse(req.query),
           }
           const result = await handlers.GET[x]?.(data as any, ctx)
@@ -53,6 +67,7 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
           const ctx = (handlers.ctx?.(req) ?? {}) as TContext
 
           const data = {
+            params: req.params,
             body: config.POST[x]?.body.parse(req.body),
             query: config.POST[x]?.query?.parse(req.query),
           }

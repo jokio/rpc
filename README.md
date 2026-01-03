@@ -15,7 +15,7 @@ A type-safe RPC framework for TypeScript with Zod validation, designed for Expre
 ## Installation
 
 ```bash
-npm install @jokio/rpc zod express
+npm install @jokio/rpc
 ```
 
 ## Usage
@@ -23,8 +23,8 @@ npm install @jokio/rpc zod express
 ### 1. Define Your Router Configuration
 
 ```typescript
-import { defineRouterConfig } from "@jokio/rpc";
-import { z } from "zod";
+import { defineRouterConfig } from "@jokio/rpc"
+import { z } from "zod"
 
 const routerConfig = defineRouterConfig({
   GET: {
@@ -55,74 +55,74 @@ const routerConfig = defineRouterConfig({
       }),
     },
   },
-});
+})
 ```
 
 ### 2. Set Up the Server
 
 ```typescript
-import express from "express";
-import { applyConfigToExpressRouter } from "@jokio/rpc";
+import express from "express"
+import { applyConfigToExpressRouter } from "@jokio/rpc"
 
-const app = express();
-app.use(express.json());
+const app = express()
+app.use(express.json())
 
-const router = express.Router();
+const router = express.Router()
 
 applyConfigToExpressRouter(router, routerConfig, {
   // Optional: Define a context factory function
   ctx: (req) => ({
     userId: req.headers["x-user-id"] as string,
-    // Add other context properties like db, logger, etc.
+    // Add other context properties here
   }),
   GET: {
     "/users/:id": async ({ query }, ctx) => {
       // Handler implementation with context
-      console.log("Current user:", ctx.userId);
+      console.log("Current user:", ctx.userId)
       return {
         id: "1",
         name: "John Doe",
         email: "john@example.com",
-      };
+      }
     },
   },
   POST: {
     "/users": async ({ body, query }, ctx) => {
       // Handler implementation with context
-      console.log("Creating user, requested by:", ctx.userId);
+      console.log("Creating user, requested by:", ctx.userId)
       return {
         id: "2",
         name: body.name,
         email: body.email,
-      };
+      }
     },
   },
-});
+})
 
-app.use("/api", router);
-app.listen(3000);
+app.use("/api", router)
+app.listen(3000)
 ```
 
 ### 3. Create a Type-Safe Client
 
 ```typescript
-import { createClient } from "@jokio/rpc";
+import { createClient } from "@jokio/rpc"
 
 const client = createClient(routerConfig, {
   baseUrl: "http://localhost:3000/api",
   validateRequest: true, // Optional: validate requests on client-side
-});
+})
 
 // Fully typed API calls
-const user = await client.GET("/users/:id", {
+const user = await client.GET("/users/23", {
   query: { include: "posts" },
-});
+})
 
 const newUser = await client.POST(
   "/users",
   { name: "Jane Doe", email: "jane@example.com" },
   { query: { sendEmail: true } }
-);
+)
 ```
 
 ## API Reference
@@ -161,16 +161,13 @@ The library provides end-to-end type safety:
 
 ```typescript
 // TypeScript knows the exact shape of requests and responses
-const result = await client.POST(
-  "/users",
-  {
-    name: "John",
-    email: "invalid-email", // Zod will catch this at runtime
-  }
-);
+const result = await client.POST("/users", {
+  name: "John",
+  email: "invalid-email", // Zod will catch this at runtime
+})
 
 // result is typed as { id: string; name: string; email: string }
-console.log(result.id);
+console.log(result.id)
 ```
 
 ## Error Handling
@@ -182,7 +179,7 @@ The library throws errors for:
 
 ```typescript
 try {
-  await client.POST("/users", invalidData);
+  await client.POST("/users", invalidData)
 } catch (error) {
   // Handle validation or HTTP errors
 }
