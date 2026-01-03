@@ -70,9 +70,15 @@ app.use(express.json());
 const router = express.Router();
 
 applyConfigToExpressRouter(router, routerConfig, {
+  // Optional: Define a context factory function
+  ctx: (req) => ({
+    userId: req.headers["x-user-id"] as string,
+    // Add other context properties like db, logger, etc.
+  }),
   GET: {
-    "/users/:id": async ({ query }) => {
-      // Handler implementation
+    "/users/:id": async ({ query }, ctx) => {
+      // Handler implementation with context
+      console.log("Current user:", ctx.userId);
       return {
         id: "1",
         name: "John Doe",
@@ -81,8 +87,9 @@ applyConfigToExpressRouter(router, routerConfig, {
     },
   },
   POST: {
-    "/users": async ({ body, query }) => {
-      // Handler implementation
+    "/users": async ({ body, query }, ctx) => {
+      // Handler implementation with context
+      console.log("Creating user, requested by:", ctx.userId);
       return {
         id: "2",
         name: body.name,
@@ -107,14 +114,15 @@ const client = createClient(routerConfig, {
 });
 
 // Fully typed API calls
-const user = await client.GET["/users/:id"]({
+const user = await client.GET("/users/:id", {
   query: { include: "posts" },
 });
 
-const newUser = await client.POST["/users"]({
-  body: { name: "Jane Doe", email: "jane@example.com" },
-  query: { sendEmail: true },
-});
+const newUser = await client.POST(
+  "/users",
+  { name: "Jane Doe", email: "jane@example.com" },
+  { query: { sendEmail: true } }
+);
 ```
 
 ## API Reference
@@ -131,7 +139,10 @@ Applies route handlers to an Express router with automatic validation.
 
 - `router`: Express Router instance
 - `config`: Router configuration object
-- `handlers`: Handler functions for each route
+- `handlers`: Handler functions for each route with optional context factory
+  - `ctx`: Optional function `(req: Request) => TContext` to provide context to handlers
+  - `GET`: Handler functions that receive `(data, ctx)` parameters
+  - `POST`: Handler functions that receive `(data, ctx)` parameters
 
 ### `createClient(config, options)`
 
@@ -150,12 +161,13 @@ The library provides end-to-end type safety:
 
 ```typescript
 // TypeScript knows the exact shape of requests and responses
-const result = await client.POST["/users"]({
-  body: {
+const result = await client.POST(
+  "/users",
+  {
     name: "John",
     email: "invalid-email", // Zod will catch this at runtime
-  },
-});
+  }
+);
 
 // result is typed as { id: string; name: string; email: string }
 console.log(result.id);
@@ -170,7 +182,7 @@ The library throws errors for:
 
 ```typescript
 try {
-  await client.POST["/users"]({ body: invalidData });
+  await client.POST("/users", invalidData);
 } catch (error) {
   // Handle validation or HTTP errors
 }
