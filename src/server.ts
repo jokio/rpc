@@ -43,7 +43,7 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
     validation?: boolean
   }
 ) => {
-  const { validation = false, schemaFilePath } = handlers
+  const { validation = true, schemaFilePath } = handlers
 
   router = Object.keys(routes.GET).reduce(
     (r, x) =>
