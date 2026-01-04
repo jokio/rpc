@@ -4,7 +4,6 @@ A type-safe RPC framework for TypeScript with Zod validation, designed for Expre
 
 <img width="400" height="400" alt="ChatGPT Image Jan 4, 2026 at 10_15_01 AM" src="https://github.com/user-attachments/assets/5ca6462a-4d3a-46d6-ac09-31ecbc4d06fb" />
 
-
 ## Features
 
 - Full TypeScript type safety from server to client
@@ -31,10 +30,7 @@ import { z } from "zod"
 
 const routes = defineRoutes({
   GET: {
-    "/users/:id": {
-      query: z.object({
-        include: z.enum(["posts", "comments"]).optional(),
-      }),
+    "/user/:id": {
       result: z.object({
         id: z.string(),
         name: z.string(),
@@ -43,13 +39,10 @@ const routes = defineRoutes({
     },
   },
   POST: {
-    "/users": {
+    "/user": {
       body: z.object({
         name: z.string(),
         email: z.string().email(),
-      }),
-      query: z.object({
-        sendEmail: z.boolean().optional(),
       }),
       result: z.object({
         id: z.string(),
@@ -65,34 +58,25 @@ const routes = defineRoutes({
 
 ```typescript
 import express from "express"
-import { createExpressRouter } from "@jokio/rpc"
+import { registerExpressRoutes } from "@jokio/rpc"
 
 const app = express()
 app.use(express.json())
 
 const router = express.Router()
 
-createExpressRouter(router, routes, {
-  // Optional: Define a context factory function
-  ctx: (req) => ({
-    userId: req.headers["x-user-id"] as string,
-    // Add other context properties here
-  }),
+registerExpressRoutes(router, routes, {
   GET: {
-    "/users/:id": async ({ query }, ctx) => {
-      // Handler implementation with context
-      console.log("Current user:", ctx.userId)
+    "/user/:id": async ({ params }) => {
       return {
-        id: "1",
+        id: params.id,
         name: "John Doe",
         email: "john@example.com",
       }
     },
   },
   POST: {
-    "/users": async ({ body, query }, ctx) => {
-      // Handler implementation with context
-      console.log("Creating user, requested by:", ctx.userId)
+    "/user": async ({ body }) => {
       return {
         id: "2",
         name: body.name,
@@ -117,15 +101,12 @@ const client = createClient(routes, {
 })
 
 // Fully typed API calls
-const user = await client.GET("/users/23", {
-  query: { include: "posts" },
-})
+const user = await client.GET("/users/23")
 
-const newUser = await client.POST(
-  "/users",
-  { name: "Jane Doe", email: "jane@example.com" },
-  { query: { sendEmail: true } }
-)
+const newUser = await client.POST("/users", {
+  name: "Jane Doe",
+  email: "jane@example.com",
+})
 ```
 
 ## API Reference
@@ -135,11 +116,12 @@ const newUser = await client.POST(
 Helper function to define routes with type inference.
 
 **Parameters:**
+
 - `routes`: Route definitions object containing GET and POST route configurations
 
-### `createExpressRouter(router, routes, handlers)`
+### `registerExpressRoutes(router, routes, handlers)`
 
-Applies route handlers to an Express router with automatic validation.
+Registers route handlers to an Express router with automatic validation.
 
 **Parameters:**
 

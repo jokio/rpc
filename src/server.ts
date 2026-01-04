@@ -34,7 +34,7 @@ export type RouteHandlers<T extends RouterConfig, TContext> = {
   }
 }
 
-export const createExpressRouter = <T extends RouterConfig, TContext>(
+export const registerExpressRoutes = <T extends RouterConfig, TContext>(
   router: Router,
   routes: T,
   handlers: RouteHandlers<T, TContext> & {
