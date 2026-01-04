@@ -20,7 +20,7 @@ A type-safe RPC framework for TypeScript with Zod validation, designed for Expre
 ## Installation
 
 ```bash
-npm install @jokio/rpc
+npm install @jokio/rpc zod
 ```
 
 ## Usage
