@@ -4,13 +4,16 @@ A type-safe RPC framework for TypeScript with Zod validation, designed for Expre
 
 <img width="400" height="400" alt="ChatGPT Image Jan 4, 2026 at 10_15_01 AM" src="https://github.com/user-attachments/assets/5ca6462a-4d3a-46d6-ac09-31ecbc4d06fb" />
 
+## Use Cases
+
+**Front-end → Backend** | **Backend → Backend**
+
 ## Features
 
 - Full TypeScript type safety from server to client
 - Runtime validation using Zod schemas
 - Express.js integration for server-side
 - Flexible fetch-based client with custom fetch support
-- Support for both GET and POST routes
 - Query parameters and request body validation
 - Automatic response validation
 
@@ -31,7 +34,7 @@ import { z } from "zod"
 const routes = defineRoutes({
   GET: {
     "/user/:id": {
-      result: z.object({
+      response: z.object({
         id: z.string(),
         name: z.string(),
         email: z.string(),
@@ -44,7 +47,7 @@ const routes = defineRoutes({
         name: z.string(),
         email: z.string().email(),
       }),
-      result: z.object({
+      response: z.object({
         id: z.string(),
         name: z.string(),
         email: z.string(),

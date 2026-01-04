@@ -2,8 +2,8 @@ import type z from "zod"
 
 export type RouteConfig = {
   body: z.ZodType
-  query?: z.ZodType
-  result: z.ZodType
+  queryParams?: z.ZodType
+  response: z.ZodType
 }
 
 export type RouterConfig = {

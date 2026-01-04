@@ -14,23 +14,23 @@ type ExtractRouteParams<T extends string> =
 export type RouteHandlers<T extends RouterConfig, TContext> = {
   GET: {
     [K in keyof T["GET"]]: (
-      data: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "result"> & {
+      data: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "response"> & {
         params: K extends string ? ExtractRouteParams<K> : unknown
       },
       ctx: TContext
     ) =>
-      | Promise<InferRouteConfig<T["GET"][K]>["result"]>
-      | InferRouteConfig<T["GET"][K]>["result"]
+      | Promise<InferRouteConfig<T["GET"][K]>["response"]>
+      | InferRouteConfig<T["GET"][K]>["response"]
   }
   POST: {
     [K in keyof T["POST"]]: (
-      data: Omit<InferRouteConfig<T["POST"][K]>, "result"> & {
+      data: Omit<InferRouteConfig<T["POST"][K]>, "response"> & {
         params: K extends string ? ExtractRouteParams<K> : unknown
       },
       ctx: TContext
     ) =>
-      | Promise<InferRouteConfig<T["POST"][K]>["result"]>
-      | InferRouteConfig<T["POST"][K]>["result"]
+      | Promise<InferRouteConfig<T["POST"][K]>["response"]>
+      | InferRouteConfig<T["POST"][K]>["response"]
   }
 }
 
@@ -50,10 +50,10 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
 
           const data = {
             params: req.params,
-            query: routes.GET[x]?.query?.parse(req.query),
+            queryParams: routes.GET[x]?.queryParams?.parse(req.query),
           }
           const result = await handlers.GET[x]?.(data as any, ctx)
-          const validatedResult = routes.GET[x]?.result.parse(result)
+          const validatedResult = routes.GET[x]?.response.parse(result)
 
           res.json(validatedResult)
         } catch (err) {
@@ -80,10 +80,10 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
           const data = {
             params: req.params,
             body: routes.POST[x]?.body.parse(req.body),
-            query: routes.POST[x]?.query?.parse(req.query),
+            queryParams: routes.POST[x]?.queryParams?.parse(req.query),
           }
           const result = await handlers.POST[x]?.(data as any, ctx)
-          const validatedResult = routes.POST[x]?.result.parse(result)
+          const validatedResult = routes.POST[x]?.response.parse(result)
           res.json(validatedResult)
         } catch (err) {
           next(err)

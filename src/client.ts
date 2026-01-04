@@ -3,13 +3,13 @@ import type { InferRouteConfig, RouterConfig } from "./types"
 export type RouterClient<T extends RouterConfig> = {
   GET: <K extends keyof T["GET"]>(
     path: K,
-    options?: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "result">
-  ) => Promise<InferRouteConfig<T["GET"][K]>["result"]>
+    options?: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "response">
+  ) => Promise<InferRouteConfig<T["GET"][K]>["response"]>
   POST: <K extends keyof T["POST"]>(
     path: K,
     body: InferRouteConfig<T["POST"][K]>["body"],
-    options?: Omit<InferRouteConfig<T["POST"][K]>, "body" | "result">
-  ) => Promise<InferRouteConfig<T["POST"][K]>["result"]>
+    options?: Omit<InferRouteConfig<T["POST"][K]>, "body" | "response">
+  ) => Promise<InferRouteConfig<T["POST"][K]>["response"]>
 }
 
 type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
@@ -39,12 +39,12 @@ export const createClient = <T extends RouterConfig>(
   }
 
   client.GET = async (path: string, options?: any) => {
-    if (validate && options?.query) {
-      routes.GET[path]?.query?.parse(options.query)
+    if (validate && options?.queryParams) {
+      routes.GET[path]?.queryParams?.parse(options.queryParams)
     }
 
-    const queryString = options?.query
-      ? "?" + new URLSearchParams(options.query).toString()
+    const queryString = options?.queryParams
+      ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
 
     const response = await customFetch(`${baseUrl}${path}${queryString}`, {
@@ -67,7 +67,7 @@ export const createClient = <T extends RouterConfig>(
 
     const json = await response.json()
 
-    return routes.GET[path]?.result.parse(json)
+    return routes.GET[path]?.response.parse(json)
   }
 
   client.POST = async (path: string, body: any, options?: any) => {
@@ -75,13 +75,13 @@ export const createClient = <T extends RouterConfig>(
       if (body) {
         routes.POST[path]?.body?.parse(body)
       }
-      if (options?.query) {
-        routes.POST[path]?.query?.parse(options.query)
+      if (options?.queryParams) {
+        routes.POST[path]?.queryParams?.parse(options.queryParams)
       }
     }
 
-    const queryString = options?.query
-      ? "?" + new URLSearchParams(options.query).toString()
+    const queryString = options?.queryParams
+      ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
 
     const response = await customFetch(`${baseUrl}${path}${queryString}`, {
@@ -105,7 +105,7 @@ export const createClient = <T extends RouterConfig>(
 
     const json = await response.json()
 
-    return routes.POST[path]?.result.parse(json)
+    return routes.POST[path]?.response.parse(json)
   }
 
   return client
