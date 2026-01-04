@@ -64,7 +64,7 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
   )
 
   if (handlers.schemaFilePath) {
-    router = router.get("/__schema", async (_, res) =>
+    router = router.get("/__routes", async (_, res) =>
       res
         .contentType("text/plain")
         .send(await readFile(handlers.schemaFilePath!, "utf8"))
