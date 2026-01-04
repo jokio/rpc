@@ -40,8 +40,11 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
   handlers: RouteHandlers<T, TContext> & {
     ctx?: (req: Request) => TContext
     schemaFilePath?: string
+    validation?: boolean
   }
 ) => {
+  const { validation = false, schemaFilePath } = handlers
+
   router = Object.keys(routes.GET).reduce(
     (r, x) =>
       r.get(x, async (req, res, next) => {
@@ -53,9 +56,8 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
             queryParams: routes.GET[x]?.queryParams?.parse(req.query),
           }
           const result = await handlers.GET[x]?.(data as any, ctx)
-          const validatedResult = routes.GET[x]?.response.parse(result)
 
-          res.json(validatedResult)
+          res.json(validation ? routes.GET[x]?.response.parse(result) : result)
         } catch (err) {
           next(err)
         }
@@ -63,11 +65,11 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
     router
   )
 
-  if (handlers.schemaFilePath) {
-    router = router.get("/__routes", async (_, res) =>
+  if (schemaFilePath) {
+    router = router.get("/__schema", async (_, res) =>
       res
         .contentType("text/plain")
-        .send(await readFile(handlers.schemaFilePath!, "utf8"))
+        .send(await readFile(schemaFilePath!, "utf8"))
     )
   }
 
@@ -83,8 +85,8 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
             queryParams: routes.POST[x]?.queryParams?.parse(req.query),
           }
           const result = await handlers.POST[x]?.(data as any, ctx)
-          const validatedResult = routes.POST[x]?.response.parse(result)
-          res.json(validatedResult)
+
+          res.json(validation ? routes.POST[x]?.response.parse(result) : result)
         } catch (err) {
           next(err)
         }

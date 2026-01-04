@@ -65,9 +65,14 @@ export const createClient = <T extends RouterConfig>(
       throw new Error(error.message)
     }
 
+    if (routes.GET[path].response.type === "void") {
+      await response.text()
+      return
+    }
+
     const json = await response.json()
 
-    return routes.GET[path]?.response.parse(json)
+    return validate ? routes.GET[path]?.response.parse(json) : json
   }
 
   client.POST = async (path: string, body: any, options?: any) => {
@@ -103,9 +108,14 @@ export const createClient = <T extends RouterConfig>(
       throw new Error(error.message)
     }
 
+    if (routes.POST[path].response.type === "void") {
+      await response.text()
+      return
+    }
+
     const json = await response.json()
 
-    return routes.POST[path]?.response.parse(json)
+    return validate ? routes.POST[path]?.response.parse(json) : json
   }
 
   return client
