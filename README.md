@@ -2,6 +2,9 @@
 
 A type-safe RPC framework for TypeScript with Zod validation, designed for Express servers and HTTP clients.
 
+<img width="400" height="400" alt="ChatGPT Image Jan 4, 2026 at 10_15_01 AM" src="https://github.com/user-attachments/assets/5ca6462a-4d3a-46d6-ac09-31ecbc4d06fb" />
+
+
 ## Features
 
 - Full TypeScript type safety from server to client
