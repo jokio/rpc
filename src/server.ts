@@ -1,4 +1,5 @@
 import type { Request, Router } from "express"
+import { readFile } from "node:fs/promises"
 import type { InferRouteConfig, RouterConfig } from "./types"
 
 // Extract path parameters from route string
@@ -35,12 +36,13 @@ export type RouterHandlerConfig<T extends RouterConfig, TContext> = {
 
 export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
   router: Router,
-  config: T,
+  schema: T,
   handlers: RouterHandlerConfig<T, TContext> & {
     ctx?: (req: Request) => TContext
+    schemaFilePath?: string
   }
 ) => {
-  router = Object.keys(config.GET).reduce(
+  router = Object.keys(schema.GET).reduce(
     (r, x) =>
       r.get(x, async (req, res, next) => {
         try {
@@ -48,10 +50,11 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
 
           const data = {
             params: req.params,
-            query: config.GET[x]?.query?.parse(req.query),
+            query: schema.GET[x]?.query?.parse(req.query),
           }
           const result = await handlers.GET[x]?.(data as any, ctx)
-          const validatedResult = config.GET[x]?.result.parse(result)
+          const validatedResult = schema.GET[x]?.result.parse(result)
+
           res.json(validatedResult)
         } catch (err) {
           next(err)
@@ -60,7 +63,15 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
     router
   )
 
-  router = Object.keys(config.POST).reduce(
+  if (handlers.schemaFilePath) {
+    router = router.get("/__schema", async (_, res) =>
+      res
+        .contentType("text/plain")
+        .send(await readFile(handlers.schemaFilePath!, "utf8"))
+    )
+  }
+
+  router = Object.keys(schema.POST).reduce(
     (r, x) =>
       r.post(x, async (req, res, next) => {
         try {
@@ -68,11 +79,11 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
 
           const data = {
             params: req.params,
-            body: config.POST[x]?.body.parse(req.body),
-            query: config.POST[x]?.query?.parse(req.query),
+            body: schema.POST[x]?.body.parse(req.body),
+            query: schema.POST[x]?.query?.parse(req.query),
           }
           const result = await handlers.POST[x]?.(data as any, ctx)
-          const validatedResult = config.POST[x]?.result.parse(result)
+          const validatedResult = schema.POST[x]?.result.parse(result)
           res.json(validatedResult)
         } catch (err) {
           next(err)
