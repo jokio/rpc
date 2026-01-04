@@ -1,36 +1,31 @@
 import type { Request, Router } from "express"
 import { readFile } from "node:fs/promises"
-import type { InferRouteConfig, RouterConfig } from "./types"
+import type {
+  ExtractRouteParams,
+  InferRouteConfig,
+  RouterConfig,
+} from "./types"
 
-// Extract path parameters from route string
-// e.g., "/user/:id" -> { id: string }, "/user/:id/post/:postId" -> { id: string, postId: string }
-type ExtractRouteParams<T extends string> =
-  T extends `${infer _Start}:${infer Param}/${infer Rest}`
-    ? { [K in Param | keyof ExtractRouteParams<`/${Rest}`>]: string }
-    : T extends `${infer _Start}:${infer Param}`
-    ? { [K in Param]: string }
-    : Record<string, never>
+// Reusable type for sync or async responses
+type MaybePromise<T> = Promise<T> | T
+
+// Reusable type for handler data with params
+type HandlerData<TConfig, K> = Omit<TConfig, "response"> & {
+  params: K extends string ? ExtractRouteParams<K> : unknown
+}
 
 export type RouteHandlers<T extends RouterConfig, TContext> = {
   GET: {
     [K in keyof T["GET"]]: (
-      data: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "response"> & {
-        params: K extends string ? ExtractRouteParams<K> : unknown
-      },
+      data: HandlerData<Omit<InferRouteConfig<T["GET"][K]>, "body">, K>,
       ctx: TContext
-    ) =>
-      | Promise<InferRouteConfig<T["GET"][K]>["response"]>
-      | InferRouteConfig<T["GET"][K]>["response"]
+    ) => MaybePromise<InferRouteConfig<T["GET"][K]>["response"]>
   }
   POST: {
     [K in keyof T["POST"]]: (
-      data: Omit<InferRouteConfig<T["POST"][K]>, "response"> & {
-        params: K extends string ? ExtractRouteParams<K> : unknown
-      },
+      data: HandlerData<InferRouteConfig<T["POST"][K]>, K>,
       ctx: TContext
-    ) =>
-      | Promise<InferRouteConfig<T["POST"][K]>["response"]>
-      | InferRouteConfig<T["POST"][K]>["response"]
+    ) => MaybePromise<InferRouteConfig<T["POST"][K]>["response"]>
   }
 }
 
@@ -43,7 +38,7 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
     validation?: boolean
   }
 ) => {
-  const { validation = true, schemaFilePath } = handlers
+  const { validation = false, schemaFilePath } = handlers
 
   router = Object.keys(routes.GET).reduce(
     (r, x) =>

@@ -1,14 +1,24 @@
-import type { InferRouteConfig, RouterConfig } from "./types"
+import type {
+  ExtractRouteParams,
+  InferRouteConfig,
+  RouterConfig,
+} from "./types"
+
+// Reusable type for client options with optional params
+type ClientOptions<TConfig, K> = Omit<TConfig, "response"> & {
+  params?: K extends string ? ExtractRouteParams<K> : unknown
+}
 
 export type RouterClient<T extends RouterConfig> = {
   GET: <K extends keyof T["GET"]>(
     path: K,
-    options?: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "response">
+    options?: ClientOptions<Omit<InferRouteConfig<T["GET"][K]>, "body">, K>
   ) => Promise<InferRouteConfig<T["GET"][K]>["response"]>
+
   POST: <K extends keyof T["POST"]>(
     path: K,
     body: InferRouteConfig<T["POST"][K]>["body"],
-    options?: Omit<InferRouteConfig<T["POST"][K]>, "body" | "response">
+    options?: ClientOptions<Omit<InferRouteConfig<T["POST"][K]>, "body">, K>
   ) => Promise<InferRouteConfig<T["POST"][K]>["response"]>
 }
 
@@ -20,6 +30,41 @@ type CreateClientOptions = {
   fetch?: FetchFunction
   validate?: boolean
   debug?: boolean
+}
+
+/**
+ * Replaces path parameters with their values.
+ * @param path - The path template with parameters (e.g., "/:id/test/:name/info")
+ * @param params - The parameter values (e.g., {id: "123", name: "434"})
+ * @returns The resolved path (e.g., "/123/test/434/info")
+ * @throws Error if a required parameter is missing
+ */
+export const replacePathParams = (
+  path: string,
+  params: Record<string, string | number>
+): string => {
+  const paramNames = new Set<string>()
+  const paramPattern = /:([^/]+)/g
+  let match: RegExpExecArray | null
+
+  // Extract all parameter names from the path
+  while ((match = paramPattern.exec(path)) !== null) {
+    paramNames.add(match[1])
+  }
+
+  // Check if all required parameters are provided
+  for (const paramName of paramNames) {
+    if (!(paramName in params)) {
+      throw new Error(
+        `Missing required parameter: "${paramName}" for path "${path}"`
+      )
+    }
+  }
+
+  // Replace all parameters with their values
+  return path.replace(/:([^/]+)/g, (_, paramName) => {
+    return String(params[paramName])
+  })
 }
 
 export const createClient = <T extends RouterConfig>(
@@ -47,7 +92,9 @@ export const createClient = <T extends RouterConfig>(
       ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
 
-    const response = await customFetch(`${baseUrl}${path}${queryString}`, {
+    const finalPath = replacePathParams(path, options.params ?? {})
+
+    const response = await customFetch(`${baseUrl}${finalPath}${queryString}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -89,7 +136,9 @@ export const createClient = <T extends RouterConfig>(
       ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
 
-    const response = await customFetch(`${baseUrl}${path}${queryString}`, {
+    const finalPath = replacePathParams(path, options.params ?? {})
+
+    const response = await customFetch(`${baseUrl}${finalPath}${queryString}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
