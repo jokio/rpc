@@ -92,7 +92,9 @@ export const createClient = <T extends RouterConfig>(
       ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
 
-    const finalPath = replacePathParams(path, options.params ?? {})
+    const finalPath = path.includes(":")
+      ? replacePathParams(path, options?.params ?? {})
+      : path
 
     const response = await customFetch(`${baseUrl}${finalPath}${queryString}`, {
       method: "GET",
@@ -136,7 +138,9 @@ export const createClient = <T extends RouterConfig>(
       ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
 
-    const finalPath = replacePathParams(path, options.params ?? {})
+    const finalPath = path.includes(":")
+      ? replacePathParams(path, options?.params ?? {})
+      : path
 
     const response = await customFetch(`${baseUrl}${finalPath}${queryString}`, {
       method: "POST",

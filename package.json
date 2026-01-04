@@ -1,6 +1,6 @@
 {
   "name": "@jokio/rpc",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Type-safe RPC framework with Zod validation for Express and TypeScript",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
