@@ -3,4 +3,9 @@ export type { RouterClient } from "./client"
 export { registerExpressRoutes } from "./server"
 export type { RouteHandlers } from "./server"
 export { defineRoutes } from "./types"
-export type { InferRouteConfig, RouteConfig, RouterConfig } from "./types"
+export type {
+  ExtractRouteParams,
+  InferRouteConfig,
+  RouteConfig,
+  RouterConfig,
+} from "./types"
