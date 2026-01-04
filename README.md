@@ -23,13 +23,13 @@ npm install @jokio/rpc
 
 ## Usage
 
-### 1. Define Your Router Configuration
+### 1. Define Your Routes
 
 ```typescript
-import { defineRouterConfig } from "@jokio/rpc"
+import { defineRoutes } from "@jokio/rpc"
 import { z } from "zod"
 
-const routerConfig = defineRouterConfig({
+const routes = defineRoutes({
   GET: {
     "/users/:id": {
       query: z.object({
@@ -65,14 +65,14 @@ const routerConfig = defineRouterConfig({
 
 ```typescript
 import express from "express"
-import { applyConfigToExpressRouter } from "@jokio/rpc"
+import { createExpressRouter } from "@jokio/rpc"
 
 const app = express()
 app.use(express.json())
 
 const router = express.Router()
 
-applyConfigToExpressRouter(router, routerConfig, {
+createExpressRouter(router, routes, {
   // Optional: Define a context factory function
   ctx: (req) => ({
     userId: req.headers["x-user-id"] as string,
@@ -111,9 +111,9 @@ app.listen(3000)
 ```typescript
 import { createClient } from "@jokio/rpc"
 
-const client = createClient(routerConfig, {
+const client = createClient(routes, {
   baseUrl: "http://localhost:3000/api",
-  validateRequest: true, // Optional: validate requests on client-side
+  validate: true, // Optional: validate requests on client-side
 })
 
 // Fully typed API calls
@@ -130,33 +130,38 @@ const newUser = await client.POST(
 
 ## API Reference
 
-### `defineRouterConfig(config)`
+### `defineRoutes(routes)`
 
-Helper function to define a router configuration with type inference.
+Helper function to define routes with type inference.
 
-### `applyConfigToExpressRouter(router, config, handlers)`
+**Parameters:**
+- `routes`: Route definitions object containing GET and POST route configurations
+
+### `createExpressRouter(router, routes, handlers)`
 
 Applies route handlers to an Express router with automatic validation.
 
 **Parameters:**
 
 - `router`: Express Router instance
-- `config`: Router configuration object
+- `routes`: Route definitions object
 - `handlers`: Handler functions for each route with optional context factory
   - `ctx`: Optional function `(req: Request) => TContext` to provide context to handlers
   - `GET`: Handler functions that receive `(data, ctx)` parameters
   - `POST`: Handler functions that receive `(data, ctx)` parameters
 
-### `createClient(config, options)`
+### `createClient(routes, options)`
 
 Creates a type-safe HTTP client.
 
-**Options:**
+**Parameters:**
 
-- `baseUrl`: Base URL for API requests
-- `headers`: Optional default headers
-- `fetch`: Optional custom fetch function (useful for Node.js or testing)
-- `validateRequest`: Enable client-side request validation (default: false)
+- `routes`: Route definitions object (same as used on the server)
+- `options`: Client configuration options
+  - `baseUrl`: Base URL for API requests
+  - `getHeaders`: Optional function that returns headers (sync or async)
+  - `fetch`: Optional custom fetch function (useful for Node.js or testing)
+  - `validate`: Enable client-side request validation (default: false)
 
 ## Type Safety
 

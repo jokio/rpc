@@ -11,7 +11,7 @@ type ExtractRouteParams<T extends string> =
     ? { [K in Param]: string }
     : Record<string, never>
 
-export type RouterHandlerConfig<T extends RouterConfig, TContext> = {
+export type RouteHandlers<T extends RouterConfig, TContext> = {
   GET: {
     [K in keyof T["GET"]]: (
       data: Omit<Omit<InferRouteConfig<T["GET"][K]>, "body">, "result"> & {
@@ -34,15 +34,15 @@ export type RouterHandlerConfig<T extends RouterConfig, TContext> = {
   }
 }
 
-export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
+export const createExpressRouter = <T extends RouterConfig, TContext>(
   router: Router,
-  schema: T,
-  handlers: RouterHandlerConfig<T, TContext> & {
+  routes: T,
+  handlers: RouteHandlers<T, TContext> & {
     ctx?: (req: Request) => TContext
     schemaFilePath?: string
   }
 ) => {
-  router = Object.keys(schema.GET).reduce(
+  router = Object.keys(routes.GET).reduce(
     (r, x) =>
       r.get(x, async (req, res, next) => {
         try {
@@ -50,10 +50,10 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
 
           const data = {
             params: req.params,
-            query: schema.GET[x]?.query?.parse(req.query),
+            query: routes.GET[x]?.query?.parse(req.query),
           }
           const result = await handlers.GET[x]?.(data as any, ctx)
-          const validatedResult = schema.GET[x]?.result.parse(result)
+          const validatedResult = routes.GET[x]?.result.parse(result)
 
           res.json(validatedResult)
         } catch (err) {
@@ -71,7 +71,7 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
     )
   }
 
-  router = Object.keys(schema.POST).reduce(
+  router = Object.keys(routes.POST).reduce(
     (r, x) =>
       r.post(x, async (req, res, next) => {
         try {
@@ -79,11 +79,11 @@ export const applyConfigToExpressRouter = <T extends RouterConfig, TContext>(
 
           const data = {
             params: req.params,
-            body: schema.POST[x]?.body.parse(req.body),
-            query: schema.POST[x]?.query?.parse(req.query),
+            body: routes.POST[x]?.body.parse(req.body),
+            query: routes.POST[x]?.query?.parse(req.query),
           }
           const result = await handlers.POST[x]?.(data as any, ctx)
-          const validatedResult = schema.POST[x]?.result.parse(result)
+          const validatedResult = routes.POST[x]?.result.parse(result)
           res.json(validatedResult)
         } catch (err) {
           next(err)

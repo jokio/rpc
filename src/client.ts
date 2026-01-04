@@ -16,20 +16,21 @@ type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
 
 type CreateClientOptions = {
   baseUrl: string
-  headers?: Record<string, string>
+  getHeaders?: () => Promise<Record<string, string>> | Record<string, string>
   fetch?: FetchFunction
-  validateRequest?: boolean
+  validate?: boolean
+  debug?: boolean
 }
 
 export const createClient = <T extends RouterConfig>(
-  config: T,
+  routes: T,
   options: CreateClientOptions
 ): RouterClient<T> => {
   const {
     baseUrl,
-    headers = {},
+    getHeaders = () => Promise.resolve({}),
     fetch: customFetch = fetch,
-    validateRequest = false,
+    validate = false,
   } = options
 
   const client = {
@@ -37,62 +38,74 @@ export const createClient = <T extends RouterConfig>(
     POST: {} as any,
   }
 
-  client.GET = async (path: string, data?: any) => {
-    if (validateRequest && data?.query) {
-      config.GET[path]?.query?.parse(data.query)
+  client.GET = async (path: string, options?: any) => {
+    if (validate && options?.query) {
+      routes.GET[path]?.query?.parse(options.query)
     }
-    const queryString = data?.query
-      ? "?" + new URLSearchParams(data.query).toString()
+
+    const queryString = options?.query
+      ? "?" + new URLSearchParams(options.query).toString()
       : ""
+
     const response = await customFetch(`${baseUrl}${path}${queryString}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...headers,
+        ...(await getHeaders()),
       },
     })
 
     if (!response.ok) {
       const error: any = await response.json()
-      console.error(error)
+
+      if (options.debug) {
+        console.debug(error)
+      }
+
       throw new Error(error.message)
     }
 
     const json = await response.json()
 
-    return config.GET[path]?.result.parse(json)
+    return routes.GET[path]?.result.parse(json)
   }
 
-  client.POST = async (path: string, body: any, rest?: any) => {
-    if (validateRequest) {
+  client.POST = async (path: string, body: any, options?: any) => {
+    if (validate) {
       if (body) {
-        config.POST[path]?.body?.parse(body)
+        routes.POST[path]?.body?.parse(body)
       }
-      if (rest?.query) {
-        config.POST[path]?.query?.parse(rest.query)
+      if (options?.query) {
+        routes.POST[path]?.query?.parse(options.query)
       }
     }
-    const queryString = rest?.query
-      ? "?" + new URLSearchParams(rest.query).toString()
+
+    const queryString = options?.query
+      ? "?" + new URLSearchParams(options.query).toString()
       : ""
+
     const response = await customFetch(`${baseUrl}${path}${queryString}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...headers,
+        ...(await getHeaders()),
       },
       body: JSON.stringify(body),
     })
 
     if (!response.ok) {
       const error: any = await response.json()
-      console.error(error)
+
+      if (options.debug) {
+        console.debug(error)
+      }
+
       throw new Error(error.message)
     }
 
     const json = await response.json()
 
-    return config.POST[path]?.result.parse(json)
+    return routes.POST[path]?.result.parse(json)
   }
 
   return client

@@ -17,5 +17,5 @@ export type InferRouteConfig<
   [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : never
 }
 
-export const defineRouterSchema = <T extends RouterConfig>(config: T): T =>
-  config
+export const defineRoutes = <T extends RouterConfig>(routes: T): T =>
+  routes
