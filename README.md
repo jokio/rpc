@@ -14,7 +14,8 @@ A type-safe RPC framework for TypeScript with Zod validation, designed for Expre
 - Runtime validation using Zod schemas
 - Express.js integration for server-side
 - Flexible fetch-based client with custom fetch support
-- Query parameters and request body validation
+- Support for multiple HTTP methods (GET, POST, PUT, PATCH, DELETE, QUERY)
+- Path parameters, query parameters, and request body validation
 - Automatic response validation
 
 ## Installation
@@ -34,6 +35,9 @@ import { z } from "zod"
 const routes = defineRoutes({
   GET: {
     "/user/:id": {
+      queryParams: z.object({
+        include: z.string().optional(),
+      }),
       response: z.object({
         id: z.string(),
         name: z.string(),
@@ -46,6 +50,19 @@ const routes = defineRoutes({
       body: z.object({
         name: z.string(),
         email: z.string().email(),
+      }),
+      response: z.object({
+        id: z.string(),
+        name: z.string(),
+        email: z.string(),
+      }),
+    },
+  },
+  PUT: {
+    "/user/:id": {
+      body: z.object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
       }),
       response: z.object({
         id: z.string(),
@@ -70,7 +87,9 @@ const router = express.Router()
 
 registerExpressRoutes(router, routes, {
   GET: {
-    "/user/:id": async ({ params }) => {
+    "/user/:id": async ({ params, queryParams }) => {
+      // params.id is type-safe and contains the :id from the path
+      // queryParams.include is validated by Zod
       return {
         id: params.id,
         name: "John Doe",
@@ -80,10 +99,21 @@ registerExpressRoutes(router, routes, {
   },
   POST: {
     "/user": async ({ body }) => {
+      // body is validated by Zod
       return {
         id: "2",
         name: body.name,
         email: body.email,
+      }
+    },
+  },
+  PUT: {
+    "/user/:id": async ({ params, body }) => {
+      // Both params and body are type-safe
+      return {
+        id: params.id,
+        name: body.name ?? "John Doe",
+        email: body.email ?? "john@example.com",
       }
     },
   },
@@ -103,13 +133,27 @@ const client = createClient(routes, {
   validate: true, // Optional: validate requests on client-side
 })
 
-// Fully typed API calls
-const user = await client.GET("/users/23")
+// Fully typed API calls with path parameters
+const user = await client.GET("/user/:id", {
+  params: { id: "23" },
+  queryParams: { include: "profile" },
+})
 
-const newUser = await client.POST("/users", {
+// POST request with body
+const newUser = await client.POST("/user", {
   name: "Jane Doe",
   email: "jane@example.com",
 })
+
+// PUT request with path parameters and body
+const updatedUser = await client.PUT("/user/:id",
+  {
+    name: "Jane Smith",
+  },
+  {
+    params: { id: "23" },
+  }
+)
 ```
 
 ## API Reference
@@ -120,7 +164,12 @@ Helper function to define routes with type inference.
 
 **Parameters:**
 
-- `routes`: Route definitions object containing GET and POST route configurations
+- `routes`: Route definitions object containing method configurations (GET, POST, PUT, PATCH, DELETE, QUERY)
+
+**Route Configuration:**
+- `body`: Zod schema for request body (not available for GET)
+- `queryParams`: Zod schema for query parameters (optional)
+- `response`: Zod schema for response data
 
 ### `registerExpressRoutes(router, routes, handlers)`
 
@@ -130,10 +179,14 @@ Registers route handlers to an Express router with automatic validation.
 
 - `router`: Express Router instance
 - `routes`: Route definitions object
-- `handlers`: Handler functions for each route with optional context factory
+- `handlers`: Handler functions for each route with optional configuration
   - `ctx`: Optional function `(req: Request) => TContext` to provide context to handlers
-  - `GET`: Handler functions that receive `(data, ctx)` parameters
-  - `POST`: Handler functions that receive `(data, ctx)` parameters
+  - `validation`: Optional boolean to enable response validation (default: false)
+  - `schemaFilePath`: Optional path to expose route schemas at `/__schema` endpoint
+  - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `QUERY`: Handler functions that receive `(data, ctx)` parameters
+    - `data.params`: Path parameters (e.g., `:id` in `/user/:id`)
+    - `data.body`: Request body (validated by Zod)
+    - `data.queryParams`: Query parameters (validated by Zod)
 
 ### `createClient(routes, options)`
 
@@ -146,7 +199,21 @@ Creates a type-safe HTTP client.
   - `baseUrl`: Base URL for API requests
   - `getHeaders`: Optional function that returns headers (sync or async)
   - `fetch`: Optional custom fetch function (useful for Node.js or testing)
-  - `validate`: Enable client-side request validation (default: false)
+  - `validate`: Enable client-side request validation (default: true)
+  - `debug`: Enable debug logging (default: false)
+
+**Client Methods:**
+
+Each HTTP method has a type-safe method on the client:
+
+- `GET(path, options?)`: For GET requests
+  - `options.params`: Path parameters
+  - `options.queryParams`: Query parameters
+- `POST(path, body, options?)`: For POST requests
+- `PUT(path, body, options?)`: For PUT requests
+- `PATCH(path, body, options?)`: For PATCH requests
+- `DELETE(path, body, options?)`: For DELETE requests
+- `QUERY(path, body, options?)`: For QUERY requests (custom method)
 
 ## Type Safety
 
@@ -154,13 +221,24 @@ The library provides end-to-end type safety:
 
 ```typescript
 // TypeScript knows the exact shape of requests and responses
-const result = await client.POST("/users", {
+const result = await client.POST("/user", {
   name: "John",
   email: "invalid-email", // Zod will catch this at runtime
 })
 
 // result is typed as { id: string; name: string; email: string }
 console.log(result.id)
+
+// Path parameters are type-safe
+const user = await client.GET("/user/:id", {
+  params: { id: "123" }, // TypeScript enforces correct parameter names
+})
+
+// Query parameters are validated
+const users = await client.GET("/user/:id", {
+  params: { id: "123" },
+  queryParams: { include: "profile" }, // Must match Zod schema
+})
 ```
 
 ## Error Handling
@@ -169,12 +247,22 @@ The library throws errors for:
 
 - HTTP errors (non-2xx responses)
 - Validation errors (invalid request/response data)
+- Missing path parameters
 
 ```typescript
 try {
-  await client.POST("/users", invalidData)
+  await client.POST("/user", invalidData)
 } catch (error) {
   // Handle validation or HTTP errors
+}
+
+// Missing path parameters will throw an error
+try {
+  await client.GET("/user/:id", {
+    params: {}, // Missing 'id' parameter
+  })
+} catch (error) {
+  // Error: Missing required parameter: "id" for path "/user/:id"
 }
 ```
 
