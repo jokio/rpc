@@ -41,9 +41,9 @@ const createRouteHandler = <
   routes: T,
   handlers: RouteHandlers<T, TContext> & {
     ctx?: (req: Request) => TContext
-    validation?: boolean
   },
-  route: string
+  route: string,
+  validation: boolean
 ) => {
   return async (req: Request, res: any, next: any) => {
     try {
@@ -65,9 +65,7 @@ const createRouteHandler = <
 
       const result = await handlers[method][route]?.(data as any, ctx)
 
-      res.json(
-        handlers.validation ? routeConfig?.response.parse(result) : result
-      )
+      res.json(validation ? routeConfig?.response.parse(result) : result)
     } catch (err) {
       next(err)
     }
@@ -86,7 +84,7 @@ export const registerExpressRoutes = <
     validation?: boolean
   }
 ) => {
-  const { schemaFilePath } = handlers
+  const { schemaFilePath, validation = true } = handlers
 
   const expressMethodMap = {
     GET: "get",
@@ -107,7 +105,7 @@ export const registerExpressRoutes = <
       (r, route) =>
         r[routerMethod](
           route,
-          createRouteHandler(methodKey, routes, handlers, route)
+          createRouteHandler(methodKey, routes, handlers, route, validation)
         ),
       router
     )
