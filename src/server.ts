@@ -1,5 +1,4 @@
 import type { Request, Router } from "express"
-import { readFile } from "node:fs/promises"
 import {
   type ExtractRouteParams,
   type InferRouteConfig,
@@ -80,11 +79,11 @@ export const registerExpressRoutes = <
   routes: T,
   handlers: RouteHandlers<T, TContext> & {
     ctx?: (req: Request) => TContext
-    schemaFilePath?: string
+    schemaFile?: string
     validation?: boolean
   }
 ) => {
-  const { schemaFilePath, validation = true } = handlers
+  const { schemaFile, validation = true } = handlers
 
   const expressMethodMap = {
     GET: "get",
@@ -111,11 +110,9 @@ export const registerExpressRoutes = <
     )
   }
 
-  if (schemaFilePath) {
-    router = router.get("/__schema", async (_, res) =>
-      res
-        .contentType("text/plain")
-        .send(await readFile(schemaFilePath!, "utf8"))
+  if (schemaFile) {
+    router = router.get("/__routes", async (_, res) =>
+      res.contentType("text/plain").send(schemaFile)
     )
   }
 

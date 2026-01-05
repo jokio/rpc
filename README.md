@@ -146,7 +146,8 @@ const newUser = await client.POST("/user", {
 })
 
 // PUT request with path parameters and body
-const updatedUser = await client.PUT("/user/:id",
+const updatedUser = await client.PUT(
+  "/user/:id",
   {
     name: "Jane Smith",
   },
@@ -167,6 +168,7 @@ Helper function to define routes with type inference.
 - `routes`: Route definitions object containing method configurations (GET, POST, PUT, PATCH, DELETE, QUERY)
 
 **Route Configuration:**
+
 - `body`: Zod schema for request body (not available for GET)
 - `queryParams`: Zod schema for query parameters (optional)
 - `response`: Zod schema for response data
@@ -182,7 +184,7 @@ Registers route handlers to an Express router with automatic validation.
 - `handlers`: Handler functions for each route with optional configuration
   - `ctx`: Optional function `(req: Request) => TContext` to provide context to handlers
   - `validation`: Optional boolean to enable response validation (default: false)
-  - `schemaFilePath`: Optional path to expose route schemas at `/__schema` endpoint
+  - `schemaFile`: Optional path to expose route schemas at `/__routes` endpoint
   - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `QUERY`: Handler functions that receive `(data, ctx)` parameters
     - `data.params`: Path parameters (e.g., `:id` in `/user/:id`)
     - `data.body`: Request body (validated by Zod)
