@@ -1,7 +1,7 @@
-import type {
-  ExtractRouteParams,
-  InferRouteConfig,
-  RouterConfig,
+import {
+  type ExtractRouteParams,
+  type InferRouteConfig,
+  type RouterConfig,
 } from "./types"
 
 // Reusable type for client options with optional params
@@ -15,11 +15,35 @@ export type RouterClient<T extends RouterConfig> = {
     options?: ClientOptions<Omit<InferRouteConfig<T["GET"][K]>, "body">, K>
   ) => Promise<InferRouteConfig<T["GET"][K]>["response"]>
 
+  QUERY: <K extends keyof T["QUERY"]>(
+    path: K,
+    body: InferRouteConfig<T["QUERY"][K]>["body"],
+    options?: ClientOptions<Omit<InferRouteConfig<T["QUERY"][K]>, "body">, K>
+  ) => Promise<InferRouteConfig<T["QUERY"][K]>["response"]>
+
   POST: <K extends keyof T["POST"]>(
     path: K,
     body: InferRouteConfig<T["POST"][K]>["body"],
     options?: ClientOptions<Omit<InferRouteConfig<T["POST"][K]>, "body">, K>
   ) => Promise<InferRouteConfig<T["POST"][K]>["response"]>
+
+  PUT: <K extends keyof T["PUT"]>(
+    path: K,
+    body: InferRouteConfig<T["PUT"][K]>["body"],
+    options?: ClientOptions<Omit<InferRouteConfig<T["PUT"][K]>, "body">, K>
+  ) => Promise<InferRouteConfig<T["PUT"][K]>["response"]>
+
+  PATCH: <K extends keyof T["PATCH"]>(
+    path: K,
+    body: InferRouteConfig<T["PATCH"][K]>["body"],
+    options?: ClientOptions<Omit<InferRouteConfig<T["PATCH"][K]>, "body">, K>
+  ) => Promise<InferRouteConfig<T["PATCH"][K]>["response"]>
+
+  DELETE: <K extends keyof T["DELETE"]>(
+    path: K,
+    body: InferRouteConfig<T["DELETE"][K]>["body"],
+    options?: ClientOptions<Omit<InferRouteConfig<T["DELETE"][K]>, "body">, K>
+  ) => Promise<InferRouteConfig<T["DELETE"][K]>["response"]>
 }
 
 type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
@@ -68,26 +92,17 @@ export const replacePathParams = (
 }
 
 export const createClient = <T extends RouterConfig>(
-  routes: T,
+  routes: Partial<T>,
   options: CreateClientOptions
 ): RouterClient<T> => {
   const {
     baseUrl,
     getHeaders = () => Promise.resolve({}),
     fetch: customFetch = fetch,
-    validate = false,
+    validate = true,
   } = options
 
-  const client = {
-    GET: {} as any,
-    POST: {} as any,
-  }
-
-  client.GET = async (path: string, options?: any) => {
-    if (validate && options?.queryParams) {
-      routes.GET[path]?.queryParams?.parse(options.queryParams)
-    }
-
+  const buildUrl = (path: string, options?: any): string => {
     const queryString = options?.queryParams
       ? "?" + new URLSearchParams(options.queryParams).toString()
       : ""
@@ -96,80 +111,108 @@ export const createClient = <T extends RouterConfig>(
       ? replacePathParams(path, options?.params ?? {})
       : path
 
-    const response = await customFetch(`${baseUrl}${finalPath}${queryString}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...(await getHeaders()),
-      },
-    })
+    return `${baseUrl}${finalPath}${queryString}`
+  }
 
+  const handleValidation = (
+    method: keyof T,
+    path: string,
+    body?: any,
+    options?: any
+  ) => {
+    if (!validate) return
+
+    const routeConfig = (routes[method] as any)[path]
+    if (body && routeConfig?.body) {
+      routeConfig.body.parse(body)
+    }
+    if (options?.queryParams && routeConfig?.queryParams) {
+      routeConfig.queryParams.parse(options.queryParams)
+    }
+  }
+
+  const handleResponse = async (
+    method: keyof T,
+    path: string,
+    response: Response,
+    options?: any
+  ) => {
     if (!response.ok) {
       const error: any = await response.json()
 
-      if (options.debug) {
+      if (options?.debug) {
         console.debug(error)
       }
 
       throw new Error(error.message)
     }
 
-    if (routes.GET[path].response.type === "void") {
+    const routeConfig = (routes[method] as any)[path]
+    if (routeConfig.response.type === "void") {
       await response.text()
       return
     }
 
     const json = await response.json()
 
-    return validate ? routes.GET[path]?.response.parse(json) : json
+    return validate && routeConfig?.response
+      ? routeConfig.response.parse(json)
+      : json
   }
 
-  client.POST = async (path: string, body: any, options?: any) => {
-    if (validate) {
-      if (body) {
-        routes.POST[path]?.body?.parse(body)
-      }
-      if (options?.queryParams) {
-        routes.POST[path]?.queryParams?.parse(options.queryParams)
-      }
-    }
+  const makeRequest = async (
+    method: keyof T,
+    path: string,
+    body?: any,
+    options?: any
+  ) => {
+    handleValidation(method, path, body, options)
 
-    const queryString = options?.queryParams
-      ? "?" + new URLSearchParams(options.queryParams).toString()
-      : ""
-
-    const finalPath = path.includes(":")
-      ? replacePathParams(path, options?.params ?? {})
-      : path
-
-    const response = await customFetch(`${baseUrl}${finalPath}${queryString}`, {
-      method: "POST",
+    const url = buildUrl(path, options)
+    const fetchOptions: RequestInit = {
+      method: method as string,
       headers: {
         "Content-Type": "application/json",
         ...(await getHeaders()),
       },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      const error: any = await response.json()
-
-      if (options.debug) {
-        console.debug(error)
-      }
-
-      throw new Error(error.message)
     }
 
-    if (routes.POST[path].response.type === "void") {
-      await response.text()
-      return
+    if (body !== undefined) {
+      fetchOptions.body = JSON.stringify(body)
     }
 
-    const json = await response.json()
+    const response = await customFetch(url, fetchOptions)
 
-    return validate ? routes.POST[path]?.response.parse(json) : json
+    return handleResponse(method, path, response, options)
   }
 
-  return client
+  return {
+    GET: async (path: any, options?: any) =>
+      makeRequest("GET", path, undefined, options),
+
+    QUERY: async (path: any, body: any, options?: any) =>
+      makeRequest("QUERY", path, body, options),
+
+    POST: async (path: any, body: any, options?: any) =>
+      makeRequest("POST", path, body, options),
+
+    PUT: async (path: any, body: any, options?: any) =>
+      makeRequest("PUT", path, body, options),
+
+    PATCH: async (path: any, body: any, options?: any) =>
+      makeRequest("PATCH", path, body, options),
+
+    DELETE: async (path: any, body: any, options?: any) =>
+      makeRequest("DELETE", path, body, options),
+  }
 }
+
+// const routes = defineRoutes({
+//   GET: {
+//     "/test": {
+//       response: z.string(),
+//     },
+//   },
+// })
+
+// var t = createClient(routes, { baseUrl: "" })
