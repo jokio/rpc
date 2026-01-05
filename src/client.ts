@@ -9,41 +9,19 @@ type ClientOptions<TConfig, K> = Omit<TConfig, "response"> & {
   params?: K extends string ? ExtractRouteParams<K> : unknown
 }
 
-export type RouterClient<T extends RouterConfig> = {
-  GET: <K extends keyof T["GET"]>(
-    path: K,
-    options?: ClientOptions<Omit<InferRouteConfig<T["GET"][K]>, "body">, K>
-  ) => Promise<InferRouteConfig<T["GET"][K]>["response"]>
-
-  QUERY: <K extends keyof T["QUERY"]>(
-    path: K,
-    body: InferRouteConfig<T["QUERY"][K]>["body"],
-    options?: ClientOptions<Omit<InferRouteConfig<T["QUERY"][K]>, "body">, K>
-  ) => Promise<InferRouteConfig<T["QUERY"][K]>["response"]>
-
-  POST: <K extends keyof T["POST"]>(
-    path: K,
-    body: InferRouteConfig<T["POST"][K]>["body"],
-    options?: ClientOptions<Omit<InferRouteConfig<T["POST"][K]>, "body">, K>
-  ) => Promise<InferRouteConfig<T["POST"][K]>["response"]>
-
-  PUT: <K extends keyof T["PUT"]>(
-    path: K,
-    body: InferRouteConfig<T["PUT"][K]>["body"],
-    options?: ClientOptions<Omit<InferRouteConfig<T["PUT"][K]>, "body">, K>
-  ) => Promise<InferRouteConfig<T["PUT"][K]>["response"]>
-
-  PATCH: <K extends keyof T["PATCH"]>(
-    path: K,
-    body: InferRouteConfig<T["PATCH"][K]>["body"],
-    options?: ClientOptions<Omit<InferRouteConfig<T["PATCH"][K]>, "body">, K>
-  ) => Promise<InferRouteConfig<T["PATCH"][K]>["response"]>
-
-  DELETE: <K extends keyof T["DELETE"]>(
-    path: K,
-    body: InferRouteConfig<T["DELETE"][K]>["body"],
-    options?: ClientOptions<Omit<InferRouteConfig<T["DELETE"][K]>, "body">, K>
-  ) => Promise<InferRouteConfig<T["DELETE"][K]>["response"]>
+export type RouterClient<T extends Partial<RouterConfig>> = {
+  [M in keyof T & keyof RouterConfig]: T[M] extends Record<string, any>
+    ? M extends "GET"
+      ? <K extends keyof T[M]>(
+          path: K,
+          options?: ClientOptions<Omit<InferRouteConfig<T[M][K]>, "body">, K>
+        ) => Promise<InferRouteConfig<T[M][K]>["response"]>
+      : <K extends keyof T[M]>(
+          path: K,
+          body: InferRouteConfig<T[M][K]>["body"],
+          options?: ClientOptions<Omit<InferRouteConfig<T[M][K]>, "body">, K>
+        ) => Promise<InferRouteConfig<T[M][K]>["response"]>
+    : never
 }
 
 type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
@@ -91,8 +69,8 @@ export const replacePathParams = (
   })
 }
 
-export const createClient = <T extends RouterConfig>(
-  routes: Partial<T>,
+export const createClient = <T extends Partial<RouterConfig>>(
+  routes: T,
   options: CreateClientOptions
 ): RouterClient<T> => {
   const {
@@ -115,14 +93,14 @@ export const createClient = <T extends RouterConfig>(
   }
 
   const handleValidation = (
-    method: keyof T,
+    method: keyof T & keyof RouterConfig,
     path: string,
     body?: any,
     options?: any
   ) => {
     if (!validate) return
 
-    const routeConfig = (routes[method] as any)[path]
+    const routeConfig = (routes[method] as any)?.[path]
     if (body && routeConfig?.body) {
       routeConfig.body.parse(body)
     }
@@ -132,7 +110,7 @@ export const createClient = <T extends RouterConfig>(
   }
 
   const handleResponse = async (
-    method: keyof T,
+    method: keyof T & keyof RouterConfig,
     path: string,
     response: Response,
     options?: any
@@ -147,8 +125,8 @@ export const createClient = <T extends RouterConfig>(
       throw new Error(error.message)
     }
 
-    const routeConfig = (routes[method] as any)[path]
-    if (routeConfig.response.type === "void") {
+    const routeConfig = (routes[method] as any)?.[path]
+    if (routeConfig?.response?.type === "void") {
       await response.text()
       return
     }
@@ -161,7 +139,7 @@ export const createClient = <T extends RouterConfig>(
   }
 
   const makeRequest = async (
-    method: keyof T,
+    method: keyof T & keyof RouterConfig,
     path: string,
     body?: any,
     options?: any
@@ -186,33 +164,30 @@ export const createClient = <T extends RouterConfig>(
     return handleResponse(method, path, response, options)
   }
 
-  return {
+  const client = {} as RouterClient<T>
+
+  const methodHandlers = {
     GET: async (path: any, options?: any) =>
       makeRequest("GET", path, undefined, options),
-
     QUERY: async (path: any, body: any, options?: any) =>
       makeRequest("QUERY", path, body, options),
-
     POST: async (path: any, body: any, options?: any) =>
       makeRequest("POST", path, body, options),
-
     PUT: async (path: any, body: any, options?: any) =>
       makeRequest("PUT", path, body, options),
-
     PATCH: async (path: any, body: any, options?: any) =>
       makeRequest("PATCH", path, body, options),
-
     DELETE: async (path: any, body: any, options?: any) =>
       makeRequest("DELETE", path, body, options),
   }
+
+  for (const method of Object.keys(routes) as Array<
+    keyof T & keyof RouterConfig
+  >) {
+    if (method in methodHandlers) {
+      ;(client as any)[method] = methodHandlers[method]
+    }
+  }
+
+  return client
 }
-
-// const routes = defineRoutes({
-//   GET: {
-//     "/test": {
-//       response: z.string(),
-//     },
-//   },
-// })
-
-// var t = createClient(routes, { baseUrl: "" })

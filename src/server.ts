@@ -1,10 +1,9 @@
 import type { Request, Router } from "express"
 import { readFile } from "node:fs/promises"
-import z from "zod"
 import {
-  defineRoutes,
   type ExtractRouteParams,
   type InferRouteConfig,
+  type RouteConfig,
   type RouterConfig,
 } from "./types"
 
@@ -16,47 +15,25 @@ type HandlerData<TConfig, K> = Omit<TConfig, "response"> & {
   params: K extends string ? ExtractRouteParams<K> : unknown
 }
 
-export type RouteHandlers<T extends RouterConfig, TContext> = {
-  GET: {
-    [K in keyof T["GET"]]: (
-      data: HandlerData<Omit<InferRouteConfig<T["GET"][K]>, "body">, K>,
-      ctx: TContext
-    ) => MaybePromise<InferRouteConfig<T["GET"][K]>["response"]>
-  }
-  QUERY: {
-    [K in keyof T["QUERY"]]: (
-      data: HandlerData<InferRouteConfig<T["QUERY"][K]>, K>,
-      ctx: TContext
-    ) => MaybePromise<InferRouteConfig<T["QUERY"][K]>["response"]>
-  }
-  POST: {
-    [K in keyof T["POST"]]: (
-      data: HandlerData<InferRouteConfig<T["POST"][K]>, K>,
-      ctx: TContext
-    ) => MaybePromise<InferRouteConfig<T["POST"][K]>["response"]>
-  }
-  PUT: {
-    [K in keyof T["PUT"]]: (
-      data: HandlerData<InferRouteConfig<T["PUT"][K]>, K>,
-      ctx: TContext
-    ) => MaybePromise<InferRouteConfig<T["PUT"][K]>["response"]>
-  }
-  PATCH: {
-    [K in keyof T["PATCH"]]: (
-      data: HandlerData<InferRouteConfig<T["PATCH"][K]>, K>,
-      ctx: TContext
-    ) => MaybePromise<InferRouteConfig<T["PATCH"][K]>["response"]>
-  }
-  DELETE: {
-    [K in keyof T["DELETE"]]: (
-      data: HandlerData<InferRouteConfig<T["DELETE"][K]>, K>,
-      ctx: TContext
-    ) => MaybePromise<InferRouteConfig<T["DELETE"][K]>["response"]>
-  }
+export type RouteHandlers<T extends Partial<RouterConfig>, TContext> = {
+  [M in keyof T & keyof RouterConfig]: T[M] extends Record<string, any>
+    ? {
+        [K in keyof T[M]]: T[M][K] extends
+          | RouteConfig
+          | Omit<RouteConfig, "body">
+          ? (
+              data: M extends "GET"
+                ? HandlerData<Omit<InferRouteConfig<T[M][K]>, "body">, K>
+                : HandlerData<InferRouteConfig<T[M][K]>, K>,
+              ctx: TContext
+            ) => MaybePromise<InferRouteConfig<T[M][K]>["response"]>
+          : never
+      }
+    : never
 }
 
 const createRouteHandler = <
-  T extends RouterConfig,
+  T extends Partial<RouterConfig>,
   TContext,
   M extends keyof RouteHandlers<T, TContext>
 >(
@@ -97,7 +74,10 @@ const createRouteHandler = <
   }
 }
 
-export const registerExpressRoutes = <T extends RouterConfig, TContext>(
+export const registerExpressRoutes = <
+  T extends Partial<RouterConfig>,
+  TContext
+>(
   router: Router,
   routes: T,
   handlers: RouteHandlers<T, TContext> & {
@@ -119,8 +99,11 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
 
   for (const [method, routerMethod] of Object.entries(expressMethodMap)) {
     const methodKey = method as keyof RouteHandlers<T, TContext>
+    const methodRoutes = routes[methodKey]
 
-    router = Object.keys(routes[methodKey] as object).reduce(
+    if (!methodRoutes) continue
+
+    router = Object.keys(methodRoutes as object).reduce(
       (r, route) =>
         r[routerMethod](
           route,
@@ -140,17 +123,3 @@ export const registerExpressRoutes = <T extends RouterConfig, TContext>(
 
   return router
 }
-
-const routes = defineRoutes({
-  GET: {
-    "/test": {
-      response: z.string(),
-    },
-  },
-})
-
-// registerExpressRoutes(null as any, routes, {
-//   GET: {
-//     "/test": () => {},
-//   },
-// })
