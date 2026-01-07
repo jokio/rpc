@@ -38,9 +38,8 @@ const createRouteHandler = <
 >(
   method: M,
   routes: T,
-  handlers: RouteHandlers<T, TContext> & {
-    ctx?: (req: Request) => TContext
-  },
+  getCtx: (req: Request) => TContext,
+  handlers: RouteHandlers<T, TContext> & {},
   route: string,
   validation: boolean
 ) => {
@@ -51,7 +50,7 @@ const createRouteHandler = <
         return
       }
 
-      const ctx = (handlers.ctx?.(req) ?? {}) as TContext
+      const ctx = (getCtx(req) ?? {}) as TContext
       const routeConfig = (routes[method] as any)[route]
 
       const data = {
@@ -77,13 +76,14 @@ export const registerExpressRoutes = <
 >(
   router: Router,
   routes: T,
-  handlers: RouteHandlers<T, TContext> & {
+  config: {
     ctx?: (req: Request) => TContext
     schemaFile?: string
     validation?: boolean
-  }
+  },
+  handlers: RouteHandlers<T, TContext>
 ) => {
-  const { schemaFile, validation = true } = handlers
+  const { schemaFile, validation = true, ctx = () => null as TContext } = config
 
   const expressMethodMap = {
     GET: "get",
@@ -104,7 +104,14 @@ export const registerExpressRoutes = <
       (r, route) =>
         r[routerMethod](
           route,
-          createRouteHandler(methodKey, routes, handlers, route, validation)
+          createRouteHandler(
+            methodKey,
+            routes,
+            ctx,
+            handlers,
+            route,
+            validation
+          )
         ),
       router
     )
