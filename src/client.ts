@@ -77,7 +77,7 @@ export const createClient = <T extends Partial<RouterConfig>>(
     baseUrl,
     getHeaders = () => Promise.resolve({}),
     fetch: customFetch = fetch,
-    validate = true,
+    validate = false,
   } = options
 
   const buildUrl = (path: string, options?: any): string => {
