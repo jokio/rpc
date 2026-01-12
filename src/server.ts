@@ -64,7 +64,8 @@ const createRouteHandler = <
       const result = await handlers[method][route]?.(data as any, ctx)
 
       res.json(validation ? routeConfig?.response.parse(result) : result)
-    } catch (err) {
+    } catch (err: any) {
+      console.warn(method, route, err?.message)
       next(err)
     }
   }
