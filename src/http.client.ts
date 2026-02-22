@@ -32,7 +32,7 @@ export type RouterClient<T extends Partial<RouterConfig>> = {
 
 type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
 
-type CreateClientOptions<T extends Partial<RouterConfig>> = {
+type CreateHttpClientOptions<T extends Partial<RouterConfig>> = {
   routes?: T
   getHeaders?: () => Promise<Record<string, string>> | Record<string, string>
   fetch?: FetchFunction
@@ -77,7 +77,7 @@ export const replacePathParams = (
 
 export const createHttpClient = <T extends Partial<RouterConfig>>(
   baseUrl: string,
-  options?: CreateClientOptions<T>,
+  options?: CreateHttpClientOptions<T>,
 ): RouterClient<T> => {
   const {
     routes,

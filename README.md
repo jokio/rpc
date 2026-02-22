@@ -91,15 +91,19 @@ app.use(express.json())
 
 const router = express.Router()
 
-registerExpressRoutes(router, { routes }, {
-  GET: {
-    "/room/:id": ({ params }) => ({ name: params.id }),
-    "/rooms": () => ({ count: 10 }),
+registerExpressRoutes(
+  router,
+  { routes },
+  {
+    GET: {
+      "/room/:id": ({ params }) => ({ name: params.id }),
+      "/rooms": () => ({ count: 10 }),
+    },
+    POST: {
+      "/room": ({ payload }) => ({ id: "1" }),
+    },
   },
-  POST: {
-    "/room": ({ payload }) => ({ id: "1" }),
-  },
-})
+)
 
 app.use("/api", router)
 app.listen(3000)
@@ -130,9 +134,9 @@ registerExpressRoutes<ApiRoutes, { userId: number }>(
 The client uses the Zod route definitions for both type inference and optional runtime validation.
 
 ```typescript
-import { createClient } from "@jokio/rpc"
+import { createHttpClient } from "@jokio/rpc"
 
-const client = createClient("http://localhost:3000/api", { routes })
+const client = createHttpClient("http://localhost:3000/api", { routes })
 
 // Fully typed response — .name is inferred from the Zod schema
 const room = await client.GET("/room/:id")
@@ -177,7 +181,7 @@ Registers route handlers to an Express router with automatic validation.
 
 When using plain TypeScript types, pass the type as a generic: `registerExpressRoutes<MyRoutes>(...)`. Zod validation is skipped since there are no schemas.
 
-### `createClient(baseUrl, options)`
+### `createHttpClient(baseUrl, options)`
 
 Creates a type-safe HTTP client.
 
@@ -213,16 +217,20 @@ The library provides end-to-end type safety with both approaches:
 
 ```typescript
 // With Zod — types are inferred, runtime validation available
-const client = createClient("http://localhost:3000/api", { routes })
+const client = createHttpClient("http://localhost:3000/api", { routes })
 const room = await client.GET("/room/:id")
 room.name // string — inferred from z.object({ name: z.string() })
 
 // With plain TS types — same type safety, no runtime cost
-registerExpressRoutes<ApiRoutes>(router, {}, {
-  POST: {
-    "/room": ({ payload }) => payload.name.length, // payload typed as { name: string }
+registerExpressRoutes<ApiRoutes>(
+  router,
+  {},
+  {
+    POST: {
+      "/room": ({ payload }) => payload.name.length, // payload typed as { name: string }
+    },
   },
-})
+)
 ```
 
 ## Error Handling
