@@ -19,12 +19,12 @@ export type RouteHandlers<T extends Partial<RouterConfig>, TContext> = {
     ? {
         [K in keyof T[M]]: T[M][K] extends
           | RouteConfig
-          | Omit<RouteConfig, "body">
+          | Omit<RouteConfig, "payload">
           ? (
               data: M extends "GET"
-                ? HandlerData<Omit<InferRouteConfig<T[M][K]>, "body">, K>
+                ? HandlerData<Omit<InferRouteConfig<T[M][K]>, "payload">, K>
                 : HandlerData<InferRouteConfig<T[M][K]>, K>,
-              ctx: TContext
+              ctx: TContext,
             ) => MaybePromise<InferRouteConfig<T[M][K]>["response"]>
           : never
       }
@@ -34,14 +34,14 @@ export type RouteHandlers<T extends Partial<RouterConfig>, TContext> = {
 const createRouteHandler = <
   T extends Partial<RouterConfig>,
   TContext,
-  M extends keyof RouteHandlers<T, TContext>
+  M extends keyof RouteHandlers<T, TContext>,
 >(
   method: M,
   routes: T,
   getCtx: (req: Request) => TContext,
   handlers: RouteHandlers<T, TContext> & {},
   route: string,
-  validation: boolean
+  validation: boolean,
 ) => {
   return async (req: Request, res: any, next: any) => {
     try {
@@ -55,7 +55,9 @@ const createRouteHandler = <
 
       const data = {
         params: req.params,
-        ...(routeConfig?.body && { body: routeConfig.body.parse(req.body) }),
+        ...(routeConfig?.payload && {
+          payload: routeConfig.payload.parse(req.body),
+        }),
         ...(routeConfig?.queryParams && {
           queryParams: routeConfig.queryParams.parse(req.query),
         }),
@@ -73,7 +75,7 @@ const createRouteHandler = <
 
 export const registerExpressRoutes = <
   T extends Partial<RouterConfig>,
-  TContext
+  TContext,
 >(
   router: Router,
   routes: T,
@@ -82,7 +84,7 @@ export const registerExpressRoutes = <
     schemaFile?: string
     validation?: boolean
   },
-  handlers: RouteHandlers<T, TContext>
+  handlers: RouteHandlers<T, TContext>,
 ) => {
   const { schemaFile, validation = true, ctx = () => null as TContext } = config
 
@@ -111,16 +113,16 @@ export const registerExpressRoutes = <
             ctx,
             handlers,
             route,
-            validation
-          )
+            validation,
+          ),
         ),
-      router
+      router,
     )
   }
 
   if (schemaFile) {
     router = router.get("/__routes", async (_, res) =>
-      res.contentType("text/plain").send(schemaFile)
+      res.contentType("text/plain").send(schemaFile),
     )
   }
 

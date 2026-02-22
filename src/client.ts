@@ -14,12 +14,18 @@ export type RouterClient<T extends Partial<RouterConfig>> = {
     ? M extends "GET"
       ? <K extends keyof T[M]>(
           path: K,
-          options?: ClientOptions<Omit<InferRouteConfig<T[M][K]>, "body">, K>
+          options?: ClientOptions<
+            Omit<InferRouteConfig<T[M][K]>, "payload">,
+            K
+          >,
         ) => Promise<InferRouteConfig<T[M][K]>["response"]>
       : <K extends keyof T[M]>(
           path: K,
-          body: InferRouteConfig<T[M][K]>["body"],
-          options?: ClientOptions<Omit<InferRouteConfig<T[M][K]>, "body">, K>
+          payload: InferRouteConfig<T[M][K]>["payload"],
+          options?: ClientOptions<
+            Omit<InferRouteConfig<T[M][K]>, "payload">,
+            K
+          >,
         ) => Promise<InferRouteConfig<T[M][K]>["response"]>
     : never
 }
@@ -43,7 +49,7 @@ type CreateClientOptions = {
  */
 export const replacePathParams = (
   path: string,
-  params: Record<string, string | number>
+  params: Record<string, string | number>,
 ): string => {
   const paramNames = new Set<string>()
   const paramPattern = /:([^/]+)/g
@@ -58,7 +64,7 @@ export const replacePathParams = (
   for (const paramName of paramNames) {
     if (!(paramName in params)) {
       throw new Error(
-        `Missing required parameter: "${paramName}" for path "${path}"`
+        `Missing required parameter: "${paramName}" for path "${path}"`,
       )
     }
   }
@@ -71,7 +77,7 @@ export const replacePathParams = (
 
 export const createClient = <T extends Partial<RouterConfig>>(
   routes: T,
-  options: CreateClientOptions
+  options: CreateClientOptions,
 ): RouterClient<T> => {
   const {
     baseUrl,
@@ -95,14 +101,14 @@ export const createClient = <T extends Partial<RouterConfig>>(
   const handleValidation = (
     method: keyof T & keyof RouterConfig,
     path: string,
-    body?: any,
-    options?: any
+    payload?: any,
+    options?: any,
   ) => {
     if (!validate) return
 
     const routeConfig = (routes[method] as any)?.[path]
-    if (body && routeConfig?.body) {
-      routeConfig.body.parse(body)
+    if (payload && routeConfig?.payload) {
+      routeConfig.payload.parse(payload)
     }
     if (options?.queryParams && routeConfig?.queryParams) {
       routeConfig.queryParams.parse(options.queryParams)
@@ -113,7 +119,7 @@ export const createClient = <T extends Partial<RouterConfig>>(
     method: keyof T & keyof RouterConfig,
     path: string,
     response: Response,
-    options?: any
+    options?: any,
   ) => {
     if (!response.ok) {
       const error: any = await response.json()
@@ -141,10 +147,10 @@ export const createClient = <T extends Partial<RouterConfig>>(
   const makeRequest = async (
     method: keyof T & keyof RouterConfig,
     path: string,
-    body?: any,
-    options?: any
+    payload?: any,
+    options?: any,
   ) => {
-    handleValidation(method, path, body, options)
+    handleValidation(method, path, payload, options)
 
     const url = buildUrl(path, options)
     const fetchOptions: RequestInit = {
@@ -155,8 +161,8 @@ export const createClient = <T extends Partial<RouterConfig>>(
       },
     }
 
-    if (body !== undefined) {
-      fetchOptions.body = JSON.stringify(body)
+    if (payload !== undefined) {
+      fetchOptions.body = JSON.stringify(payload)
     }
 
     const response = await customFetch(url, fetchOptions)
@@ -169,16 +175,16 @@ export const createClient = <T extends Partial<RouterConfig>>(
   const methodHandlers = {
     GET: async (path: any, options?: any) =>
       makeRequest("GET", path, undefined, options),
-    QUERY: async (path: any, body: any, options?: any) =>
-      makeRequest("QUERY", path, body, options),
-    POST: async (path: any, body: any, options?: any) =>
-      makeRequest("POST", path, body, options),
-    PUT: async (path: any, body: any, options?: any) =>
-      makeRequest("PUT", path, body, options),
-    PATCH: async (path: any, body: any, options?: any) =>
-      makeRequest("PATCH", path, body, options),
-    DELETE: async (path: any, body: any, options?: any) =>
-      makeRequest("DELETE", path, body, options),
+    QUERY: async (path: any, payload: any, options?: any) =>
+      makeRequest("QUERY", path, payload, options),
+    POST: async (path: any, payload: any, options?: any) =>
+      makeRequest("POST", path, payload, options),
+    PUT: async (path: any, payload: any, options?: any) =>
+      makeRequest("PUT", path, payload, options),
+    PATCH: async (path: any, payload: any, options?: any) =>
+      makeRequest("PATCH", path, payload, options),
+    DELETE: async (path: any, payload: any, options?: any) =>
+      makeRequest("DELETE", path, payload, options),
   }
 
   for (const method of Object.keys(routes) as Array<

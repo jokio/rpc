@@ -1,7 +1,7 @@
 import type z from "zod"
 
 export type RouterConfig = {
-  GET: Record<string, Omit<RouteConfig, "body">>
+  GET: Record<string, Omit<RouteConfig, "payload">>
   QUERY: Record<string, RouteConfig>
   POST: Record<string, RouteConfig>
   PUT: Record<string, RouteConfig>
@@ -10,20 +10,19 @@ export type RouterConfig = {
 }
 
 export type RouteConfig = {
-  body: z.ZodType
+  payload: z.ZodType
   queryParams?: z.ZodType
   response: z.ZodType
 }
 
 export type InferRouteConfig<
-  T extends RouteConfig | Omit<RouteConfig, "body">
+  T extends RouteConfig | Omit<RouteConfig, "payload">,
 > = {
   [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : never
 }
 
-export const defineRoutes = <T extends Partial<RouterConfig>>(
-  routes: T
-): T => routes
+export const defineRoutes = <T extends Partial<RouterConfig>>(routes: T): T =>
+  routes
 
 // Extract path parameters from route string
 // e.g., "/user/:id" -> { id: string }, "/user/:id/info" -> { id: string }, "/user/:id/post/:postId" -> { id: string, postId: string }
@@ -34,10 +33,10 @@ export type ExtractRouteParams<T extends string> =
           [K in Param | keyof ExtractRouteParams<`/${Rest}`>]: string
         }
       : Rest extends `${string}/:${string}`
-      ? {
-          [K in Param | keyof ExtractRouteParams<`/${Rest}`>]: string
-        }
-      : { [K in Param]: string }
+        ? {
+            [K in Param | keyof ExtractRouteParams<`/${Rest}`>]: string
+          }
+        : { [K in Param]: string }
     : T extends `${infer _Start}:${infer Param}`
-    ? { [K in Param]: string }
-    : Record<string, never>
+      ? { [K in Param]: string }
+      : Record<string, never>
