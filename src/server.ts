@@ -37,11 +37,17 @@ const createRouteHandler = <
   M extends keyof RouteHandlers<T, TContext>,
 >(
   method: M,
-  routes: T,
+  routes: T | undefined,
   getCtx: (req: Request) => TContext,
   handlers: RouteHandlers<T, TContext> & {},
   route: string,
-  validation: boolean,
+  validation:
+    | boolean
+    | {
+        payload?: boolean
+        queryParams?: boolean
+        response?: boolean
+      },
 ) => {
   return async (req: Request, res: any, next: any) => {
     try {
@@ -50,22 +56,47 @@ const createRouteHandler = <
         return
       }
 
+      const validationCheck = {
+        payload:
+          typeof validation === "boolean"
+            ? validation
+            : (validation.payload ?? false),
+
+        queryParams:
+          typeof validation === "boolean"
+            ? validation
+            : (validation.queryParams ?? false),
+
+        response:
+          typeof validation === "boolean"
+            ? validation
+            : (validation.response ?? false),
+      }
+
       const ctx = (getCtx(req) ?? {}) as TContext
-      const routeConfig = (routes[method] as any)[route]
+      const routeConfig = (routes?.[method] as any)[route]
 
       const data = {
         params: req.params,
-        ...(routeConfig?.payload && {
-          payload: routeConfig.payload.parse(req.body),
-        }),
-        ...(routeConfig?.queryParams && {
-          queryParams: routeConfig.queryParams.parse(req.query),
-        }),
+
+        ...(routeConfig?.payload &&
+          validationCheck.payload && {
+            payload: routeConfig.payload.parse(req.body),
+          }),
+
+        ...(routeConfig?.queryParams &&
+          validationCheck.queryParams && {
+            queryParams: routeConfig.queryParams.parse(req.query),
+          }),
       }
 
       const result = await handlers[method][route]?.(data as any, ctx)
 
-      res.json(validation ? routeConfig?.response.parse(result) : result)
+      res.json(
+        routeConfig?.response && validationCheck.response
+          ? routeConfig?.response.parse(result)
+          : result,
+      )
     } catch (err: any) {
       console.warn(method, route, err?.message)
       next(err)
@@ -78,15 +109,20 @@ export const registerExpressRoutes = <
   TContext,
 >(
   router: Router,
-  routes: T,
   config: {
+    routes?: T
     ctx?: (req: Request) => TContext
     schemaFile?: string
     validation?: boolean
   },
   handlers: RouteHandlers<T, TContext>,
 ) => {
-  const { schemaFile, validation = true, ctx = () => null as TContext } = config
+  const {
+    schemaFile,
+    validation = true,
+    ctx = () => null as TContext,
+    routes,
+  } = config
 
   const expressMethodMap = {
     GET: "get",
@@ -99,7 +135,7 @@ export const registerExpressRoutes = <
 
   for (const [method, routerMethod] of Object.entries(expressMethodMap)) {
     const methodKey = method as keyof RouteHandlers<T, TContext>
-    const methodRoutes = routes[methodKey]
+    const methodRoutes = handlers[methodKey]
 
     if (!methodRoutes) continue
 

@@ -32,8 +32,8 @@ export type RouterClient<T extends Partial<RouterConfig>> = {
 
 type FetchFunction = (url: string, options: RequestInit) => Promise<Response>
 
-type CreateClientOptions = {
-  baseUrl: string
+type CreateClientOptions<T extends Partial<RouterConfig>> = {
+  routes?: T
   getHeaders?: () => Promise<Record<string, string>> | Record<string, string>
   fetch?: FetchFunction
   validate?: boolean
@@ -76,15 +76,15 @@ export const replacePathParams = (
 }
 
 export const createClient = <T extends Partial<RouterConfig>>(
-  routes: T,
-  options: CreateClientOptions,
+  baseUrl: string,
+  options?: CreateClientOptions<T>,
 ): RouterClient<T> => {
   const {
-    baseUrl,
+    routes,
     getHeaders = () => Promise.resolve({}),
     fetch: customFetch = fetch,
     validate = false,
-  } = options
+  } = options ?? {}
 
   const buildUrl = (path: string, options?: any): string => {
     const queryString = options?.queryParams
@@ -106,7 +106,7 @@ export const createClient = <T extends Partial<RouterConfig>>(
   ) => {
     if (!validate) return
 
-    const routeConfig = (routes[method] as any)?.[path]
+    const routeConfig = (routes?.[method] as any)?.[path]
     if (payload && routeConfig?.payload) {
       routeConfig.payload.parse(payload)
     }
@@ -131,7 +131,7 @@ export const createClient = <T extends Partial<RouterConfig>>(
       throw new Error(error.message)
     }
 
-    const routeConfig = (routes[method] as any)?.[path]
+    const routeConfig = (routes?.[method] as any)?.[path]
     if (routeConfig?.response?.type === "void") {
       await response.text()
       return
@@ -170,8 +170,6 @@ export const createClient = <T extends Partial<RouterConfig>>(
     return handleResponse(method, path, response, options)
   }
 
-  const client = {} as RouterClient<T>
-
   const methodHandlers = {
     GET: async (path: any, options?: any) =>
       makeRequest("GET", path, undefined, options),
@@ -187,13 +185,7 @@ export const createClient = <T extends Partial<RouterConfig>>(
       makeRequest("DELETE", path, payload, options),
   }
 
-  for (const method of Object.keys(routes) as Array<
-    keyof T & keyof RouterConfig
-  >) {
-    if (method in methodHandlers) {
-      ;(client as any)[method] = methodHandlers[method]
-    }
-  }
+  const client = methodHandlers as RouterClient<T>
 
   return client
 }

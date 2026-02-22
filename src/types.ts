@@ -10,15 +10,15 @@ export type RouterConfig = {
 }
 
 export type RouteConfig = {
-  payload: z.ZodType
-  queryParams?: z.ZodType
-  response: z.ZodType
+  payload: z.ZodType | unknown
+  queryParams?: z.ZodType | unknown
+  response: z.ZodType | unknown
 }
 
 export type InferRouteConfig<
   T extends RouteConfig | Omit<RouteConfig, "payload">,
 > = {
-  [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : never
+  [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : T[K]
 }
 
 export const defineRoutes = <T extends Partial<RouterConfig>>(routes: T): T =>
