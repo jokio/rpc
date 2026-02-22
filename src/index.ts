@@ -1,7 +1,7 @@
-export { createClient } from "./client"
-export type { RouterClient } from "./client"
-export { registerExpressRoutes } from "./server"
-export type { RouteHandlers } from "./server"
+export { createHttpClient } from "./http.client"
+export type { RouterClient } from "./http.client"
+export { registerExpressRoutes } from "./http.server"
+export type { RouteHandlers } from "./http.server"
 export { defineRoutes } from "./types"
 export type {
   ExtractRouteParams,

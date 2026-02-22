@@ -75,7 +75,7 @@ export const replacePathParams = (
   })
 }
 
-export const createClient = <T extends Partial<RouterConfig>>(
+export const createHttpClient = <T extends Partial<RouterConfig>>(
   baseUrl: string,
   options?: CreateClientOptions<T>,
 ): RouterClient<T> => {
