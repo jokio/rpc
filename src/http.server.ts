@@ -113,7 +113,13 @@ export const registerExpressRoutes = <
     routes?: T
     ctx?: (req: Request) => TContext
     schemaFile?: string
-    validation?: boolean
+    validation?:
+      | boolean
+      | {
+          payload?: boolean
+          queryParams?: boolean
+          response?: boolean
+        }
   },
   handlers: RouteHandlers<T, TContext>,
 ) => {
