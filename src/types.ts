@@ -23,8 +23,7 @@ export type InferRouteConfig<
   [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : T[K]
 }
 
-export const defineRoutes = <T extends Partial<RouterConfig>>(routes: T): T =>
-  routes
+export const defineRoutes = <T extends Routes>(routes: T): T => routes
 
 // Extract path parameters from route string
 // e.g., "/user/:id" -> { id: string }, "/user/:id/info" -> { id: string }, "/user/:id/post/:postId" -> { id: string, postId: string }
