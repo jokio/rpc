@@ -23,6 +23,10 @@ export type InferRouteConfig<
   [K in keyof T]: T[K] extends z.ZodType ? z.infer<T[K]> : T[K]
 }
 
+// TS-only way of defining routes
+export type DefineRoutes<T extends Routes> = T
+
+// Zod way of defining routes
 export const defineRoutes = <T extends Routes>(routes: T): T => routes
 
 // Extract path parameters from route string

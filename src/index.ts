@@ -4,6 +4,7 @@ export { registerExpressRoutes } from "./http.server"
 export type { RouteHandlers } from "./http.server"
 export { defineRoutes } from "./types"
 export type {
+  DefineRoutes,
   ExtractRouteParams,
   InferRouteConfig,
   RouteConfig,
