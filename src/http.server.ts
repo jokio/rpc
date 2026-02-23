@@ -74,20 +74,20 @@ const createRouteHandler = <
       }
 
       const ctx = (getCtx(req) ?? {}) as TContext
-      const routeConfig = (routes?.[method] as any)[route]
+      const routeConfig: any = routes?.[method]?.[route]
 
       const data = {
         params: req.params,
 
-        ...(routeConfig?.payload &&
-          validationCheck.payload && {
-            payload: routeConfig.payload.parse(req.body),
-          }),
+        payload:
+          routeConfig?.payload && validationCheck.payload
+            ? routeConfig.payload.parse(req.body)
+            : req.body,
 
-        ...(routeConfig?.queryParams &&
-          validationCheck.queryParams && {
-            queryParams: routeConfig.queryParams.parse(req.query),
-          }),
+        queryParams:
+          routeConfig?.queryParams && validationCheck.queryParams
+            ? routeConfig.queryParams.parse(req.query)
+            : req.query,
       }
 
       const result = await handlers[method][route]?.(data as any, ctx)
