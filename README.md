@@ -133,6 +133,8 @@ registerExpressRoutes<ApiRoutes, { userId: number }>(
 
 ### 3. Create a Type-Safe Client
 
+#### With Zod Routes
+
 The client uses the Zod route definitions for both type inference and optional runtime validation.
 
 ```typescript
@@ -141,6 +143,20 @@ import { createHttpClient } from "@jokio/rpc"
 const client = createHttpClient("http://localhost:3000/api", { routes })
 
 // Fully typed response — .name is inferred from the Zod schema
+const room = await client.GET("/room/:id")
+console.log(room.name)
+```
+
+#### With TypeScript Types
+
+When using plain TypeScript types, pass the type as a generic parameter. No `routes` object is needed.
+
+```typescript
+import { createHttpClient } from "@jokio/rpc"
+
+const client = createHttpClient<ApiRoutes>("http://localhost:3000/api")
+
+// Fully typed response — .name is inferred from the ApiRoutes type
 const room = await client.GET("/room/:id")
 console.log(room.name)
 ```
