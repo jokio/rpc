@@ -15,6 +15,8 @@ export type RouteConfig = {
   response: z.ZodType | unknown
 }
 
+export type Routes = Partial<RouterConfig>
+
 export type InferRouteConfig<
   T extends RouteConfig | Omit<RouteConfig, "payload">,
 > = {

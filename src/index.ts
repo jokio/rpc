@@ -8,4 +8,5 @@ export type {
   InferRouteConfig,
   RouteConfig,
   RouterConfig,
+  Routes,
 } from "./types"
