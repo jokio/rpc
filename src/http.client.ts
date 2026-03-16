@@ -7,6 +7,7 @@ import {
 // Reusable type for client options with optional params
 type ClientOptions<TConfig, K> = Omit<TConfig, "response"> & {
   params?: K extends string ? ExtractRouteParams<K> : unknown
+  requestInit?: RequestInit
 }
 
 export type RouterClient<T extends Partial<RouterConfig>> = {
@@ -38,6 +39,7 @@ type CreateHttpClientOptions<T extends Partial<RouterConfig>> = {
   fetch?: FetchFunction
   validate?: boolean
   debug?: boolean
+  requestInit?: RequestInit
 }
 
 /**
@@ -84,6 +86,7 @@ export const createHttpClient = <T extends Partial<RouterConfig>>(
     getHeaders = () => Promise.resolve({}),
     fetch: customFetch = fetch,
     validate = false,
+    requestInit: genericRequestInit,
   } = options ?? {}
 
   const buildUrl = (path: string, options?: any): string => {
@@ -154,6 +157,8 @@ export const createHttpClient = <T extends Partial<RouterConfig>>(
 
     const url = buildUrl(path, options)
     const fetchOptions: RequestInit = {
+      ...genericRequestInit,
+      ...options.requestInit,
       method: method as string,
       headers: {
         "Content-Type": "application/json",
