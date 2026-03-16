@@ -158,7 +158,7 @@ export const createHttpClient = <T extends Partial<RouterConfig>>(
     const url = buildUrl(path, options)
     const fetchOptions: RequestInit = {
       ...genericRequestInit,
-      ...options.requestInit,
+      ...options?.requestInit,
       method: method as string,
       headers: {
         "Content-Type": "application/json",
