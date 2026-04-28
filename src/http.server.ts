@@ -163,7 +163,7 @@ export const registerExpressRoutes = <
   }
 
   if (schemaFile) {
-    router = router.get("/__routes", async (_, res) =>
+    router = router.get("/__schema", async (_, res) =>
       res.contentType("text/plain").send(schemaFile),
     )
   }
