@@ -10,6 +10,11 @@ export const routes = defineRoutes({
     "/users/:id": {
       response: z.object({ id: z.number(), name: z.string() }),
     },
+    "/users/:id/posts/:postId": { response: z.unknown() },
+    "/me": { response: z.unknown() },
+    "/ping": { response: z.unknown() },
+    "/protected": { response: z.unknown() },
+    "/boom": { response: z.unknown() },
   },
   QUERY: {
     "/users/search": {
@@ -26,8 +31,9 @@ export const routes = defineRoutes({
     },
     "/logout": {
       payload: z.object({}),
-      response: { type: "void" } as any,
+      response: z.void(),
     },
+    "/async-boom": { payload: z.unknown(), response: z.unknown() },
   },
   PUT: {
     "/users/:id": {
@@ -44,7 +50,7 @@ export const routes = defineRoutes({
   DELETE: {
     "/users/:id": {
       payload: z.object({}),
-      response: { type: "void" } as any,
+      response: z.void(),
     },
   },
 })

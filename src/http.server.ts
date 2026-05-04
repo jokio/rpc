@@ -21,9 +21,9 @@ export type Middleware = (
 ) => void | Promise<void>
 
 export type RouteHandlers<T extends Partial<RouterConfig>, TContext> = {
-  [M in keyof T & keyof RouterConfig]: T[M] extends Record<string, any>
+  [M in keyof T & keyof RouterConfig]?: T[M] extends Record<string, any>
     ? {
-        [K in keyof T[M]]: T[M][K] extends
+        [K in keyof T[M]]?: T[M][K] extends
           | RouteConfig
           | Omit<RouteConfig, "payload">
           ?
@@ -109,7 +109,7 @@ const createRouteHandler = <
             : req.query,
       }
 
-      const handlerDef = handlers[method][route] as any
+      const handlerDef = handlers[method]?.[route] as any
       const handlerFn =
         typeof handlerDef === "function" ? handlerDef : handlerDef?.handler
       const result = await handlerFn?.(data as any, ctx)
