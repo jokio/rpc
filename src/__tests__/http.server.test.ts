@@ -1,8 +1,8 @@
 import express, { Router } from "express"
 import request from "supertest"
 import { describe, expect, it } from "vitest"
-import { z } from "zod"
 import { registerExpressRoutes } from "../http.server"
+import { routes } from "./fixtures"
 
 function makeApp(
   routesDef: any,
@@ -30,38 +30,38 @@ describe("registerExpressRoutes", () => {
   describe("HTTP method registration", () => {
     it("registers GET routes", async () => {
       const app = makeApp(undefined, {
-        GET: { "/users": () => ({ ok: true }) },
+        GET: { "/users": () => [{ id: 1, name: "alice" }] },
       })
       const res = await request(app).get("/users")
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ ok: true })
+      expect(res.body).toEqual([{ id: 1, name: "alice" }])
     })
 
     it("registers POST routes", async () => {
       const app = makeApp(undefined, {
-        POST: { "/users": () => ({ created: true }) },
+        POST: { "/users": () => ({ id: 1, name: "alice" }) },
       })
       const res = await request(app).post("/users").send({})
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ created: true })
+      expect(res.body).toEqual({ id: 1, name: "alice" })
     })
 
     it("registers PUT routes", async () => {
       const app = makeApp(undefined, {
-        PUT: { "/users/:id": () => ({ updated: true }) },
+        PUT: { "/users/:id": () => ({ id: 1, name: "bob" }) },
       })
       const res = await request(app).put("/users/1")
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ updated: true })
+      expect(res.body).toEqual({ id: 1, name: "bob" })
     })
 
     it("registers PATCH routes", async () => {
       const app = makeApp(undefined, {
-        PATCH: { "/users/:id": () => ({ patched: true }) },
+        PATCH: { "/users/:id": () => ({ id: 1, name: "carol" }) },
       })
       const res = await request(app).patch("/users/1")
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ patched: true })
+      expect(res.body).toEqual({ id: 1, name: "carol" })
     })
 
     it("registers DELETE routes", async () => {
@@ -74,11 +74,10 @@ describe("registerExpressRoutes", () => {
     })
 
     it("skips method keys with no handlers", async () => {
-      // Only POST defined — GET should 404
       const app = makeApp(undefined, {
-        POST: { "/items": () => ({ ok: true }) },
+        POST: { "/users": () => ({ id: 1, name: "alice" }) },
       })
-      const res = await request(app).get("/items")
+      const res = await request(app).get("/users")
       expect(res.status).toBe(404)
     })
   })
@@ -86,10 +85,9 @@ describe("registerExpressRoutes", () => {
   describe("QUERY method", () => {
     it("returns 405 when request method is not QUERY", async () => {
       const app = makeApp(undefined, {
-        QUERY: { "/search": () => ({ results: [] }) },
+        QUERY: { "/users/search": () => ({ results: [] }) },
       })
-      // router.all() catches all methods — handler guards against non-QUERY
-      const res = await request(app).get("/search")
+      const res = await request(app).get("/users/search")
       expect(res.status).toBe(405)
     })
   })
@@ -132,78 +130,53 @@ describe("registerExpressRoutes", () => {
       let captured: any
       const app = makeApp(undefined, {
         POST: {
-          "/echo": (data: any) => {
+          "/users": (data: any) => {
             captured = data.payload
             return {}
           },
         },
       })
-      await request(app).post("/echo").send({ name: "alice" })
+      await request(app).post("/users").send({ name: "alice" })
       expect(captured).toEqual({ name: "alice" })
     })
 
-    it("validates payload with Zod when schema and validation.payload are enabled", async () => {
-      const routes = {
-        POST: {
-          "/items": {
-            payload: z.object({ name: z.string() }),
-            response: z.object({ name: z.string() }),
-          },
-        },
-      }
+    it("validates and parses payload when schema is defined", async () => {
       let captured: any
       const app = makeApp(routes, {
         POST: {
-          "/items": (data: any) => {
+          "/users": (data: any) => {
             captured = data.payload
-            return { name: data.payload.name }
+            return { id: 1, name: data.payload.name }
           },
         },
       })
-      await request(app).post("/items").send({ name: "widget" })
-      expect(captured).toEqual({ name: "widget" })
+      await request(app).post("/users").send({ name: "alice" })
+      expect(captured).toEqual({ name: "alice" })
     })
 
-    it("passes next(err) when Zod payload validation fails", async () => {
-      const routes = {
-        POST: {
-          "/items": {
-            payload: z.object({ name: z.string() }),
-            response: z.any(),
-          },
-        },
-      }
+    it("returns 500 when payload fails schema validation", async () => {
       const app = makeApp(routes, {
-        POST: { "/items": () => ({}) },
+        POST: { "/users": () => ({ id: 1, name: "x" }) },
       })
-      const res = await request(app).post("/items").send({ name: 123 })
+      const res = await request(app).post("/users").send({ name: 123 })
       expect(res.status).toBe(500)
     })
 
-    it("skips payload validation when validation is false", async () => {
-      const routes = {
-        POST: {
-          "/items": {
-            payload: z.object({ name: z.string() }),
-            response: z.any(),
-          },
-        },
-      }
+    it("skips payload validation when validation is disabled", async () => {
       let captured: any
       const app = makeApp(
         routes,
         {
           POST: {
-            "/items": (data: any) => {
+            "/users": (data: any) => {
               captured = data.payload
-              return {}
+              return { id: 1, name: String(data.payload.name) }
             },
           },
         },
         { validation: false },
       )
-      // Send invalid payload — should not throw because validation is off
-      await request(app).post("/items").send({ name: 999 })
+      await request(app).post("/users").send({ name: 999 })
       expect(captured).toEqual({ name: 999 })
     })
   })
@@ -213,89 +186,76 @@ describe("registerExpressRoutes", () => {
       let captured: any
       const app = makeApp(undefined, {
         GET: {
-          "/search": (data: any) => {
+          "/users": (data: any) => {
             captured = data.queryParams
-            return {}
+            return []
           },
         },
       })
-      await request(app).get("/search?q=hello&limit=10")
-      expect(captured).toEqual({ q: "hello", limit: "10" })
+      await request(app).get("/users?limit=10")
+      expect(captured).toEqual({ limit: "10" })
     })
 
-    it("validates queryParams with Zod when schema and validation.queryParams are enabled", async () => {
-      const routes = {
-        GET: {
-          "/search": {
-            queryParams: z.object({ limit: z.coerce.number() }),
-            response: z.any(),
-          },
-        },
-      }
+    it("validates and coerces queryParams when schema is defined", async () => {
       let captured: any
       const app = makeApp(
         routes,
         {
           GET: {
-            "/search": (data: any) => {
+            "/users": (data: any) => {
               captured = data.queryParams
-              return {}
+              return []
             },
           },
         },
         { validation: { queryParams: true } },
       )
-      await request(app).get("/search?limit=5")
+      await request(app).get("/users?limit=5")
       expect(captured).toEqual({ limit: 5 })
     })
 
-    it("passes next(err) when Zod queryParams validation fails", async () => {
-      const routes = {
-        GET: {
-          "/search": {
-            queryParams: z.object({ limit: z.number() }),
-            response: z.any(),
-          },
-        },
-      }
+    it("returns 500 when queryParams fails schema validation", async () => {
       const app = makeApp(
         routes,
-        { GET: { "/search": () => ({}) } },
+        { GET: { "/users": () => [] } },
         { validation: { queryParams: true } },
       )
-      const res = await request(app).get("/search?limit=notanumber")
+      const res = await request(app).get("/users?limit=notanumber")
       expect(res.status).toBe(500)
     })
   })
 
-  describe("response validation", () => {
-    it("returns raw result when validation.response is false", async () => {
-      const routes = {
-        GET: {
-          "/data": { response: z.object({ id: z.number() }) },
-        },
-      }
+  describe("void response", () => {
+    it("responds with status 200 and empty body when handler returns void", async () => {
       const app = makeApp(
         routes,
-        { GET: { "/data": () => ({ id: "not-a-number" }) } },
+        { POST: { "/logout": () => undefined } },
+        { validation: false },
+      )
+      const res = await request(app).post("/logout").send({})
+      expect(res.status).toBe(200)
+      expect(res.text).toBe("")
+    })
+  })
+
+  describe("response validation", () => {
+    it("returns raw result when response validation is disabled", async () => {
+      const app = makeApp(
+        routes,
+        { GET: { "/users/:id": () => ({ id: "not-a-number", name: "alice" }) } },
         { validation: { response: false } },
       )
-      const res = await request(app).get("/data")
-      expect(res.body).toEqual({ id: "not-a-number" })
+      const res = await request(app).get("/users/1")
+      expect(res.body).toEqual({ id: "not-a-number", name: "alice" })
     })
 
-    it("validates response with Zod when validation.response is true", async () => {
-      const routes = {
-        GET: {
-          "/data": { response: z.object({ id: z.number() }) },
-        },
-      }
+    it("returns 500 when response fails schema validation", async () => {
       const app = makeApp(
         routes,
-        { GET: { "/data": () => ({ id: "not-a-number", extra: "stripped" }) } },
+        { GET: { "/users/:id": () => ({ id: "not-a-number", name: "alice" }) } },
         { validation: { response: true } },
       )
-      const res = await request(app).get("/data")
+      const res = await request(app).get("/users/1")
       expect(res.status).toBe(500)
     })
   })
