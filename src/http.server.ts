@@ -1,4 +1,4 @@
-import type { Request, Router } from "express"
+import type { NextFunction, Request, Response, Router } from "express"
 import {
   type ExtractRouteParams,
   type InferRouteConfig,
@@ -14,18 +14,37 @@ type HandlerData<TConfig, K> = Omit<TConfig, "response"> & {
   params: K extends string ? ExtractRouteParams<K> : unknown
 }
 
+export type Middleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => void | Promise<void>
+
 export type RouteHandlers<T extends Partial<RouterConfig>, TContext> = {
   [M in keyof T & keyof RouterConfig]: T[M] extends Record<string, any>
     ? {
         [K in keyof T[M]]: T[M][K] extends
           | RouteConfig
           | Omit<RouteConfig, "payload">
-          ? (
-              data: M extends "GET"
-                ? HandlerData<Omit<InferRouteConfig<T[M][K]>, "payload">, K>
-                : HandlerData<InferRouteConfig<T[M][K]>, K>,
-              ctx: TContext,
-            ) => MaybePromise<InferRouteConfig<T[M][K]>["response"]>
+          ?
+              | ((
+                  data: M extends "GET"
+                    ? HandlerData<Omit<InferRouteConfig<T[M][K]>, "payload">, K>
+                    : HandlerData<InferRouteConfig<T[M][K]>, K>,
+                  ctx: TContext,
+                ) => MaybePromise<InferRouteConfig<T[M][K]>["response"]>)
+              | {
+                  middleware: Middleware[]
+                  handler: (
+                    data: M extends "GET"
+                      ? HandlerData<
+                          Omit<InferRouteConfig<T[M][K]>, "payload">,
+                          K
+                        >
+                      : HandlerData<InferRouteConfig<T[M][K]>, K>,
+                    ctx: TContext,
+                  ) => MaybePromise<InferRouteConfig<T[M][K]>["response"]>
+                }
           : never
       }
     : never
@@ -90,7 +109,10 @@ const createRouteHandler = <
             : req.query,
       }
 
-      const result = await handlers[method][route]?.(data as any, ctx)
+      const handlerDef = handlers[method][route] as any
+      const handlerFn =
+        typeof handlerDef === "function" ? handlerDef : handlerDef?.handler
+      const result = await handlerFn?.(data as any, ctx)
 
       res.json(
         routeConfig?.response && validationCheck.response
@@ -145,21 +167,16 @@ export const registerExpressRoutes = <
 
     if (!methodRoutes) continue
 
-    router = Object.keys(methodRoutes as object).reduce(
-      (r, route) =>
-        r[routerMethod](
-          route,
-          createRouteHandler(
-            methodKey,
-            routes,
-            ctx,
-            handlers,
-            route,
-            validation,
-          ),
-        ),
-      router,
-    )
+    router = Object.keys(methodRoutes as object).reduce((r, route) => {
+      const handlerDef = (methodRoutes as any)[route]
+      const middlewares: Middleware[] =
+        typeof handlerDef === "function" ? [] : (handlerDef?.middleware ?? [])
+      return r[routerMethod](
+        route,
+        ...middlewares,
+        createRouteHandler(methodKey, routes, ctx, handlers, route, validation),
+      )
+    }, router)
   }
 
   if (schemaFile) {
