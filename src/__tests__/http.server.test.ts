@@ -397,6 +397,47 @@ describe("registerExpressRoutes", () => {
       await request(app).get("/ping")
       expect(capturedCtx).toEqual({})
     })
+
+    it("passes res to the ctx getter", async () => {
+      const app = makeApp((router) =>
+        registerExpressRoutes(
+          router,
+          {
+            routes,
+            ctx: (_req, res) => {
+              res.setHeader("x-ctx-res", "ok")
+              return {}
+            },
+          },
+          {
+            GET: { "/ctx-check": () => ({}) },
+          },
+        ),
+      )
+      const res = await request(app).get("/ctx-check")
+      expect(res.headers["x-ctx-res"]).toBe("ok")
+    })
+
+    it("passes next to the ctx getter", async () => {
+      let capturedNext: any
+      const app = makeApp((router) =>
+        registerExpressRoutes(
+          router,
+          {
+            routes,
+            ctx: (_req, _res, next) => {
+              capturedNext = next
+              return {}
+            },
+          },
+          {
+            GET: { "/ctx-check": () => ({}) },
+          },
+        ),
+      )
+      await request(app).get("/ctx-check")
+      expect(typeof capturedNext).toBe("function")
+    })
   })
 
   describe("middleware", () => {

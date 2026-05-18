@@ -15,6 +15,7 @@ export const routes = defineRoutes({
     "/ping": { response: z.unknown() },
     "/protected": { response: z.unknown() },
     "/boom": { response: z.unknown() },
+    "/ctx-check": { response: z.unknown() },
   },
   QUERY: {
     "/users/search": {

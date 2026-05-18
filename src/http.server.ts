@@ -57,7 +57,7 @@ const createRouteHandler = <
 >(
   method: M,
   routes: T | undefined,
-  getCtx: (req: Request) => TContext,
+  getCtx: (req: Request, res: Response, next: NextFunction) => TContext,
   handlers: RouteHandlers<T, TContext> & {},
   route: string,
   validation:
@@ -92,7 +92,7 @@ const createRouteHandler = <
             : (validation.response ?? false),
       }
 
-      const ctx = (getCtx(req) ?? {}) as TContext
+      const ctx = (getCtx(req, res, next) ?? {}) as TContext
       const routeConfig: any = routes?.[method]?.[route]
 
       const data = {
@@ -133,7 +133,7 @@ export const registerExpressRoutes = <
   router: Router,
   config: {
     routes?: T
-    ctx?: (req: Request) => TContext
+    ctx?: (req: Request, res: Response, next: NextFunction) => TContext
     schemaFile?: string
     validation?:
       | boolean
