@@ -89,12 +89,12 @@ type ApiRoutes = {
 
 ```typescript
 import express from "express"
-import { registerExpressRouters } from "@jokio/rpc"
+import { registerApiAndMcpRoutes } from "@jokio/rpc"
 
 const app = express()
 app.use(express.json())
 
-const { api, mcp } = registerExpressRouters(
+const { api, mcp } = registerApiAndMcpRoutes(
   { api: express.Router(), mcp: express.Router() },
   { routes },
   {
@@ -118,7 +118,7 @@ app.listen(3000)
 When using plain TypeScript types, pass the type as a generic parameter. No `routes` object is needed — you get full type safety without runtime validation.
 
 ```typescript
-registerExpressRouters<ApiRoutes, { userId: number }>(
+registerApiAndMcpRoutes<ApiRoutes, { userId: number }>(
   { api: express.Router(), mcp: express.Router() },
   { ctx: (req) => ({ userId: 123 }) },
   {
@@ -181,7 +181,7 @@ Each route accepts the following fields as either a Zod schema or a plain TypeSc
 - `queryParams`: Query parameters (optional)
 - `response`: Response data
 
-### `registerExpressRouters(routers, config, handlers)`
+### `registerApiAndMcpRoutes(routers, config, handlers)`
 
 Registers route handlers onto two separate Express routers with automatic
 validation: the REST/OpenAPI routes on `api` and the MCP endpoint on `mcp`, so
@@ -204,7 +204,9 @@ they can be mounted independently. Returns `{ api, mcp }`.
     - `data.payload`: Request payload (validated by Zod if schemas provided)
     - `data.queryParams`: Query parameters (validated by Zod if schemas provided)
 
-When using plain TypeScript types, pass the type as a generic: `registerExpressRouters<MyRoutes>(...)`. Zod validation is skipped since there are no schemas.
+When using plain TypeScript types, pass the type as a generic: `registerApiAndMcpRoutes<MyRoutes>(...)`. Zod validation is skipped since there are no schemas.
+
+The legacy `registerExpressRoutes(router, config, handlers)` is still available: it registers everything (REST, OpenAPI and MCP) on a single router, with the MCP endpoint served at `/mcp` relative to where the router is mounted.
 
 ### OpenAPI Document
 
@@ -212,10 +214,10 @@ When enabled, an OpenAPI 3.1 document is generated from the Zod schemas and serv
 
 ```typescript
 // Enable with defaults
-registerExpressRouters(routers, { routes, openapi: true }, handlers)
+registerApiAndMcpRoutes(routers, { routes, openapi: true }, handlers)
 
 // Or enable with options
-registerExpressRouters(
+registerApiAndMcpRoutes(
   routers,
   {
     routes,
@@ -255,10 +257,10 @@ npm install @modelcontextprotocol/server@beta @modelcontextprotocol/node@beta
 
 ```typescript
 // Enable with defaults
-registerExpressRouters(routers, { routes, mcp: true }, handlers)
+registerApiAndMcpRoutes(routers, { routes, mcp: true }, handlers)
 
 // Or enable with options
-registerExpressRouters(
+registerApiAndMcpRoutes(
   routers,
   {
     routes,
@@ -287,7 +289,7 @@ How it works:
 Add optional `summary`/`description` per route via the `docs` config — they flow into the OpenAPI operations and MCP tool titles/descriptions:
 
 ```typescript
-registerExpressRouters(
+registerApiAndMcpRoutes(
   routers,
   {
     routes,
