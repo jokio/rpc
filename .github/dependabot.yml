@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Wait 7 days after a release before proposing it — most hijacked
+    # packages are detected and unpublished within days
+    cooldown:
+      default-days: 7
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
