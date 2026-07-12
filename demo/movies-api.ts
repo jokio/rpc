@@ -1,6 +1,6 @@
 import express from "express"
 import { z } from "zod"
-import { defineRoutes, registerExpressRoutes } from "../src"
+import { defineRoutes, registerApiAndMcpRoutes } from "../src"
 
 const PORT = Number(process.env.PORT ?? 6060)
 
@@ -100,8 +100,8 @@ const findMovie = (id: string) => {
 const app = express()
 app.use(express.json())
 
-const router = registerExpressRoutes(
-  express.Router(),
+const { api, mcp } = registerApiAndMcpRoutes(
+  { api: express.Router(), mcp: express.Router() },
   {
     routes,
     openapi: {
@@ -114,6 +114,9 @@ const router = registerExpressRoutes(
     mcp: {
       name: "movies-api",
       version: "1.0.0",
+      // Mount the MCP endpoint at the root of the mcp router so it
+      // resolves to /mcp (not /mcp/mcp) once mounted below.
+      path: "/",
     },
     docs: {
       GET: {
@@ -185,11 +188,12 @@ const router = registerExpressRoutes(
   },
 )
 
-app.use("/api", router)
+app.use("/api", api)
+app.use("/mcp", mcp)
 
 app.listen(PORT, () => {
   console.log(`Movies demo API running on http://localhost:${PORT}`)
   console.log(`  REST:     http://localhost:${PORT}/api/movies`)
   console.log(`  OpenAPI:  http://localhost:${PORT}/api/openapi.json`)
-  console.log(`  MCP:      http://localhost:${PORT}/api/mcp`)
+  console.log(`  MCP:      http://localhost:${PORT}/mcp`)
 })
