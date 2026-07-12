@@ -19,7 +19,7 @@
     "semi": false
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc -p tsconfig.build.json",
     "dev": "tsup --watch",
     "demo-api": "tsx demo/movies-api.ts",
     "prepublishOnly": "npm run build",
@@ -62,7 +62,7 @@
     "supertest": "^7.2.2",
     "tsup": "^8.0.1",
     "tsx": "^4.23.0",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.5",
     "zod": "^4.3.4"
   },
