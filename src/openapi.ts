@@ -1,4 +1,9 @@
-import type { Routes } from "./types"
+import type { RouteDocs, Routes } from "./types"
+
+// Loosely-keyed docs shape used internally (RouterDocs<T> narrows keys per app)
+export type LooseRouterDocs = {
+  [method: string]: { [route: string]: RouteDocs | undefined } | undefined
+}
 
 export type OpenApiOptions = {
   /** Route where the document is served. Default: "/openapi.json" */
@@ -22,13 +27,14 @@ const openApiMethodMap = {
 } as const
 
 // Zod v4 schemas carry a `_zod` internals marker
-const isZodSchema = (value: unknown): boolean =>
+export const isZodSchema = (value: unknown): boolean =>
   typeof value === "object" && value !== null && "_zod" in value
 
 export const generateOpenApiDocument = async (
   routes: Routes | undefined,
   handlers: Partial<Record<string, Record<string, unknown> | undefined>>,
   options: OpenApiOptions = {},
+  docs?: LooseRouterDocs,
 ) => {
   let toJSONSchema:
     | ((schema: unknown, opts?: object) => Record<string, any>)
@@ -88,6 +94,10 @@ export const generateOpenApiDocument = async (
       }
 
       const op: Record<string, unknown> = {}
+
+      const doc = docs?.[method]?.[route]
+      if (doc?.summary) op.summary = doc.summary
+      if (doc?.description) op.description = doc.description
 
       if (parameters.length) op.parameters = parameters
 

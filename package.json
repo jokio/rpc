@@ -38,9 +38,22 @@
   "author": "",
   "license": "MIT",
   "peerDependencies": {
+    "@modelcontextprotocol/node": "^2.0.0-beta.3",
+    "@modelcontextprotocol/server": "^2.0.0-beta.3",
     "zod": "^4.0.0"
   },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/node": {
+      "optional": true
+    },
+    "@modelcontextprotocol/server": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0-beta.3",
+    "@modelcontextprotocol/node": "^2.0.0-beta.3",
+    "@modelcontextprotocol/server": "^2.0.0-beta.3",
     "@types/express": "^5.0.6",
     "@types/node": "^20.10.0",
     "@types/supertest": "^7.2.0",

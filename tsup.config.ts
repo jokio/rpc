@@ -9,5 +9,10 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   minify: false,
-  external: ['express', 'zod'],
+  external: [
+    'express',
+    'zod',
+    '@modelcontextprotocol/server',
+    '@modelcontextprotocol/node',
+  ],
 })

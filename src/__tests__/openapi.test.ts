@@ -187,6 +187,34 @@ describe("openapi document", () => {
     expect(Object.keys(res.body.paths)).toEqual(["/users"])
   })
 
+  it("includes summary and description from docs", async () => {
+    const app = makeApp((router) =>
+      registerExpressRoutes(
+        router,
+        {
+          routes,
+          openapi: true,
+          docs: {
+            GET: {
+              "/users": {
+                summary: "List users",
+                description: "Returns all users",
+              },
+            },
+          },
+        },
+        {
+          GET: { "/users": () => [], "/me": () => null },
+        },
+      ),
+    )
+    const res = await request(app).get("/openapi.json")
+
+    expect(res.body.paths["/users"].get.summary).toBe("List users")
+    expect(res.body.paths["/users"].get.description).toBe("Returns all users")
+    expect(res.body.paths["/me"].get.summary).toBeUndefined()
+  })
+
   it("works without a routes config (plain TS types)", async () => {
     type ApiRoutes = {
       GET: { "/ping": { response: string } }

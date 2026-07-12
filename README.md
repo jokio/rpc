@@ -20,6 +20,8 @@ An implementation of [RESTspec](https://restspec.org/)
 - Path parameters, query parameters, and request payload validation
 - Automatic response validation
 - Optional OpenAPI 3.1 document generated from Zod schemas, served at `/openapi.json`
+- Optional MCP server exposing your routes as tools (via the MCP TypeScript SDK v2), served at `/mcp`
+- Optional per-route docs (`summary` / `description`) that feed both OpenAPI and MCP
 
 ## Installation
 
@@ -193,6 +195,8 @@ Registers route handlers to an Express router with automatic validation.
   - `validation`: Optional boolean to enable response validation (default: true)
   - `schemaFile`: Optional string to expose route schemas at `/__routes` endpoint
   - `openapi`: Optional boolean or options object to enable OpenAPI document generation (default: false, served at `/openapi.json` when enabled)
+  - `mcp`: Optional boolean or options object to enable the MCP server endpoint (default: false, served at `/mcp` when enabled)
+  - `docs`: Optional per-route `{ summary, description }` object, keyed by method and route — used by both OpenAPI and MCP
 - `handlers`: Handler functions for each route
   - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `QUERY`: Handler functions that receive `(data, ctx)` parameters
     - `data.params`: Path parameters (e.g., `:id` in `/user/:id`)
@@ -239,6 +243,69 @@ const doc = await generateOpenApiDocument(routes, handlers, {
   info: { title: "My API", version: "1.0.0" },
 })
 ```
+
+### MCP Server
+
+When enabled, your routes are exposed as MCP tools over Streamable HTTP at `/mcp` (relative to where the router is mounted), so any MCP client (Claude, IDEs, agents) can call your API directly. Requires the optional peer dependencies:
+
+```bash
+npm install @modelcontextprotocol/server@beta @modelcontextprotocol/node@beta
+```
+
+```typescript
+// Enable with defaults
+registerExpressRoutes(router, { routes, mcp: true }, handlers)
+
+// Or enable with options
+registerExpressRoutes(
+  router,
+  {
+    routes,
+    mcp: {
+      path: "/rpc/mcp", // default: "/mcp"
+      name: "my-api", // default: "api"
+      version: "2.0.0", // default: "1.0.0"
+    },
+  },
+  handlers,
+)
+```
+
+How it works:
+
+- Each registered handler becomes a tool named `<method>_<route>`, e.g. `GET /users/:id` → `get_users_id`.
+- Tool input is `{ params, queryParams, payload }`, built from the route's Zod schemas — the SDK validates arguments against them before your handler runs.
+- The handler result is returned as JSON text content.
+- `ctx` works the same as regular routes: it is derived from the live Express request of the MCP call.
+
+> [!WARNING]
+> Per-route `middleware` does **not** run for MCP tool calls. If your routes rely on middleware for auth, protect the MCP endpoint itself (e.g. mount auth middleware in front of the router) or enforce auth inside `ctx`/handlers.
+
+### Route Docs
+
+Add optional `summary`/`description` per route via the `docs` config — they flow into the OpenAPI operations and MCP tool titles/descriptions:
+
+```typescript
+registerExpressRoutes(
+  router,
+  {
+    routes,
+    openapi: true,
+    mcp: true,
+    docs: {
+      GET: {
+        "/users/:id": {
+          summary: "Get user",
+          description: "Fetch a single user by id",
+        },
+      },
+    },
+  },
+  handlers,
+)
+```
+
+For field-level documentation, use Zod's `.describe()` on schema fields — it flows into the generated JSON Schema automatically.
 
 ### `createHttpClient(baseUrl, options)`
 

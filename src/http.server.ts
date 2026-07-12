@@ -1,10 +1,16 @@
 import type { NextFunction, Request, Response, Router } from "express"
-import { generateOpenApiDocument, type OpenApiOptions } from "./openapi"
+import { createMcpExpressHandler, type McpOptions } from "./mcp"
+import {
+  generateOpenApiDocument,
+  type LooseRouterDocs,
+  type OpenApiOptions,
+} from "./openapi"
 import {
   type ExtractRouteParams,
   type InferRouteConfig,
   type RouteConfig,
   type RouterConfig,
+  type RouterDocs,
 } from "./types"
 
 // Reusable type for sync or async responses
@@ -144,6 +150,8 @@ export const registerExpressRoutes = <
           response?: boolean
         }
     openapi?: boolean | OpenApiOptions
+    mcp?: boolean | McpOptions
+    docs?: RouterDocs<T>
   },
   handlers: RouteHandlers<T, TContext>,
 ) => {
@@ -153,6 +161,8 @@ export const registerExpressRoutes = <
     ctx = () => null as TContext,
     routes,
     openapi = false,
+    mcp = false,
+    docs,
   } = config
 
   const expressMethodMap = {
@@ -198,9 +208,26 @@ export const registerExpressRoutes = <
         routes,
         handlers as Record<string, Record<string, unknown>>,
         openapiOptions,
+        docs as LooseRouterDocs,
       )
       res.json(doc)
     })
+  }
+
+  if (mcp !== false) {
+    const mcpOptions = mcp === true ? {} : mcp
+    const mcpPath = mcpOptions.path ?? "/mcp"
+    const mcpHandler = createMcpExpressHandler({
+      routes,
+      handlers: handlers as Record<string, Record<string, unknown>>,
+      docs: docs as LooseRouterDocs,
+      getCtx: ctx,
+      options: mcpOptions,
+    })
+    router = router
+      .post(mcpPath, mcpHandler)
+      .get(mcpPath, mcpHandler)
+      .delete(mcpPath, mcpHandler)
   }
 
   return router
