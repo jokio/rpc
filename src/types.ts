@@ -17,6 +17,19 @@ export type RouteConfig = {
 
 export type Routes = Partial<RouterConfig>
 
+// Optional per-route documentation, keyed by method and route.
+// Feeds OpenAPI operation summary/description and MCP tool title/description.
+export type RouteDocs = {
+  summary?: string
+  description?: string
+}
+
+export type RouterDocs<T extends Routes = Routes> = {
+  [M in keyof T]?: {
+    [K in keyof T[M]]?: RouteDocs
+  }
+}
+
 export type InferRouteConfig<
   T extends RouteConfig | Omit<RouteConfig, "payload">,
 > = {

@@ -1,6 +1,6 @@
 {
   "name": "@jokio/rpc",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Type-safe RPC framework with Zod validation for Express and TypeScript",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -19,8 +19,9 @@
     "semi": false
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc -p tsconfig.build.json",
     "dev": "tsup --watch",
+    "demo-api": "tsx demo/movies-api.ts",
     "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
@@ -32,21 +33,36 @@
     "type-safe",
     "api",
     "validation",
-    "framework"
+    "framework",
+    "openapi"
   ],
   "author": "",
   "license": "MIT",
   "peerDependencies": {
+    "@modelcontextprotocol/node": "^2.0.0-beta.3",
+    "@modelcontextprotocol/server": "^2.0.0-beta.3",
     "zod": "^4.0.0"
   },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/node": {
+      "optional": true
+    },
+    "@modelcontextprotocol/server": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0-beta.3",
+    "@modelcontextprotocol/node": "^2.0.0-beta.3",
+    "@modelcontextprotocol/server": "^2.0.0-beta.3",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.0",
     "@types/supertest": "^7.2.0",
     "express": "^5.2.1",
     "supertest": "^7.2.2",
     "tsup": "^8.0.1",
-    "typescript": "^5.9.3",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.5",
     "zod": "^4.3.4"
   },
@@ -67,6 +83,7 @@
   },
   "allowScripts": {
     "esbuild@0.27.2": true,
+    "esbuild@0.28.1": true,
     "fsevents@2.3.3": true
   }
 }
