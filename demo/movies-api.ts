@@ -2,7 +2,7 @@ import express from "express"
 import { z } from "zod"
 import { defineRoutes, registerExpressRoutes } from "../src"
 
-const PORT = Number(process.env.PORT ?? 4000)
+const PORT = Number(process.env.PORT ?? 6060)
 
 const movieSchema = z.object({
   id: z.string().describe("Unique movie id"),

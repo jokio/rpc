@@ -5,11 +5,11 @@
     "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
   },
   "postCreateCommand": "npm ci",
-  "forwardPorts": [4000],
+  "forwardPorts": [6060],
   "portsAttributes": {
-    "4000": {
+    "6060": {
       "label": "Movies demo API",
-      "onAutoForward": "notify"
+      "onAutoForward": "openBrowser"
     }
   },
   "customizations": {
