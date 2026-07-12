@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response, Router } from "express"
+import { generateOpenApiDocument, type OpenApiOptions } from "./openapi"
 import {
   type ExtractRouteParams,
   type InferRouteConfig,
@@ -142,6 +143,7 @@ export const registerExpressRoutes = <
           queryParams?: boolean
           response?: boolean
         }
+    openapi?: boolean | OpenApiOptions
   },
   handlers: RouteHandlers<T, TContext>,
 ) => {
@@ -150,6 +152,7 @@ export const registerExpressRoutes = <
     validation = true,
     ctx = () => null as TContext,
     routes,
+    openapi = false,
   } = config
 
   const expressMethodMap = {
@@ -183,6 +186,21 @@ export const registerExpressRoutes = <
     router = router.get("/__schema", async (_, res) =>
       res.contentType("text/plain").send(schemaFile),
     )
+  }
+
+  if (openapi !== false) {
+    const openapiOptions = openapi === true ? {} : openapi
+    const docPath = openapiOptions.path ?? "/openapi.json"
+    let doc: object | undefined
+
+    router = router.get(docPath, async (_, res) => {
+      doc ??= await generateOpenApiDocument(
+        routes,
+        handlers as Record<string, Record<string, unknown>>,
+        openapiOptions,
+      )
+      res.json(doc)
+    })
   }
 
   return router

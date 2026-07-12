@@ -1,6 +1,6 @@
 {
   "name": "@jokio/rpc",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Type-safe RPC framework with Zod validation for Express and TypeScript",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -32,7 +32,8 @@
     "type-safe",
     "api",
     "validation",
-    "framework"
+    "framework",
+    "openapi"
   ],
   "author": "",
   "license": "MIT",

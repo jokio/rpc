@@ -19,6 +19,7 @@ An implementation of [RESTspec](https://restspec.org/)
 - Support for multiple HTTP methods (GET, POST, PUT, PATCH, DELETE, QUERY)
 - Path parameters, query parameters, and request payload validation
 - Automatic response validation
+- Optional OpenAPI 3.1 document generated from Zod schemas, served at `/openapi.json`
 
 ## Installation
 
@@ -191,6 +192,7 @@ Registers route handlers to an Express router with automatic validation.
   - `ctx`: Optional function `(req: Request) => TContext` to provide context to handlers
   - `validation`: Optional boolean to enable response validation (default: true)
   - `schemaFile`: Optional string to expose route schemas at `/__routes` endpoint
+  - `openapi`: Optional boolean or options object to enable OpenAPI document generation (default: false, served at `/openapi.json` when enabled)
 - `handlers`: Handler functions for each route
   - `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `QUERY`: Handler functions that receive `(data, ctx)` parameters
     - `data.params`: Path parameters (e.g., `:id` in `/user/:id`)
@@ -198,6 +200,45 @@ Registers route handlers to an Express router with automatic validation.
     - `data.queryParams`: Query parameters (validated by Zod if schemas provided)
 
 When using plain TypeScript types, pass the type as a generic: `registerExpressRoutes<MyRoutes>(...)`. Zod validation is skipped since there are no schemas.
+
+### OpenAPI Document
+
+When enabled, an OpenAPI 3.1 document is generated from the Zod schemas and served at `/openapi.json` (relative to where the router is mounted). Only routes with registered handlers are documented.
+
+```typescript
+// Enable with defaults
+registerExpressRoutes(router, { routes, openapi: true }, handlers)
+
+// Or enable with options
+registerExpressRoutes(
+  router,
+  {
+    routes,
+    openapi: {
+      path: "/docs/openapi.json", // default: "/openapi.json"
+      info: { title: "My API", version: "2.0.0", description: "..." },
+      servers: [{ url: "https://api.example.com" }],
+    },
+  },
+  handlers,
+)
+```
+
+Notes:
+
+- Payload, query parameter, and response schemas are converted with Zod's built-in `z.toJSONSchema()` (requires zod v4).
+- `QUERY` routes are documented under the `query` operation (standardized in OpenAPI 3.2).
+- When using plain TypeScript types (no `routes` object), the document still lists paths and path parameters, but without schemas.
+
+You can also generate the document yourself without serving it, e.g. to write it to a file:
+
+```typescript
+import { generateOpenApiDocument } from "@jokio/rpc"
+
+const doc = await generateOpenApiDocument(routes, handlers, {
+  info: { title: "My API", version: "1.0.0" },
+})
+```
 
 ### `createHttpClient(baseUrl, options)`
 
